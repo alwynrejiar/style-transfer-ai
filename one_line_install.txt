@@ -1,0 +1,4 @@
+# One-line PowerShell command to install Style Transfer AI and configure PATH
+# Copy and paste this entire line into PowerShell:
+
+iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/alwynrejicser/style-transfer-ai/main/install_one_line.ps1'))

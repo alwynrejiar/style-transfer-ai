@@ -10,7 +10,39 @@ Hey! Here's how to get Style Transfer AI running on your machine:
 
 ---
 
-## 🚀 **Method 1: Simple Install (RECOMMENDED)**
+## 🚀 **Method 1: PyPI Install (EASIEST - NEW!)**
+
+### **1. Install from PyPI**
+```bash
+# One command installation
+pip install style-transfer-ai
+```
+
+### **2. Setup Global CLI Access (Windows)**
+```bash
+# Download PATH setup script
+curl -O https://raw.githubusercontent.com/alwynrejicser/style-transfer-ai/main/add_to_path.ps1
+
+# Run automatic PATH setup
+PowerShell -ExecutionPolicy Bypass -File "add_to_path.ps1"
+
+# OR use our batch file
+curl -O https://raw.githubusercontent.com/alwynrejicser/style-transfer-ai/main/setup_path.bat
+setup_path.bat
+```
+
+### **3. Use Globally**
+```bash
+# Now works from any directory!
+style-transfer-ai
+
+# With arguments
+style-transfer-ai --analyze your-text.txt
+```
+
+---
+
+## 🚀 **Method 2: Simple Install (RECOMMENDED for Development)**
 
 ### **1. Clone the Repository**
 ```bash

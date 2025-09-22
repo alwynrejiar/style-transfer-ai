@@ -1,0 +1,131 @@
+# Comprehensive Code Analysis for Style Transfer AI
+
+This document provides a detailed breakdown of the project's structure, explaining the purpose and implementation of each folder and file.
+
+---
+
+## 📂 Root Directory
+
+The root directory contains the main project configuration, entry points, and documentation.
+
+- **`setup.py`**: This file is the main configuration for the Python package. It defines metadata like the project name, version, author, and dependencies, enabling it to be installed via pip and published to PyPI.
+
+- **`run.py`**: A simple script used as the primary entry point for running the application in a development environment. It imports and executes the main function from the `src` package, allowing for easy testing without a full package installation.
+
+- **`README.md`**: The primary documentation for the project. It provides a comprehensive overview, installation instructions, usage examples, and details on the features and architecture, serving as the landing page for the GitHub repository.
+
+- **`style_analyzer_enhanced.py`**: The legacy, single-file version of the application. While the project has been refactored into a modular architecture, this file is kept for reference and can still be run independently.
+
+- **`LICENSE`**: Contains the MIT License under which the project is distributed, defining the permissions and limitations for using the software.
+
+- **`install_one_line.ps1`**: A PowerShell script that provides a one-line installation command for Windows users. It automates the process of installing the package from PyPI and configuring the system's PATH for global CLI access.
+
+- **`path_one_line.txt`**: A simple text file containing the one-line PowerShell command to add the Python scripts directory to the user's PATH. This is for users who install the package manually and need to configure the PATH separately.
+
+---
+
+## 📂 `src/` - Source Code
+
+This directory is the heart of the application, containing the main Python package and all its modules.
+
+- **`src/main.py`**: The official entry point for the installed CLI application. It orchestrates the entire workflow, from displaying the startup banner and checking system requirements to running the main interactive menu.
+
+- **`src/__init__.py`**: An empty file that designates the `src` directory as a Python package. This allows for the use of relative imports and organizes the project into a proper package structure.
+
+---
+
+### 📂 `src/analysis/` - Stylometry Analysis Engine
+
+This module contains the core logic for performing the stylometric analysis.
+
+- **`src/analysis/analyzer.py`**: The central analysis orchestrator. It integrates statistical metrics and AI-driven deep analysis, calling the appropriate model clients (Ollama, OpenAI, Gemini) and compiling the final style profile.
+
+- **`src/analysis/metrics.py`**: This file contains functions for calculating quantitative, statistical metrics from the text. This includes readability scores (like Flesch-Kincaid), lexical diversity, sentence and word counts, and punctuation frequency.
+
+- **`src/analysis/prompts.py`**: Responsible for dynamically generating the detailed, structured prompts that are sent to the AI models. It constructs the 25-point analysis framework, ensuring the AI provides a consistent and comprehensive evaluation.
+
+---
+
+### 📂 `src/config/` - Application Configuration
+
+This module centralizes all global settings and constants for the application.
+
+- **`src/config/settings.py`**: A configuration file that stores global constants such as the application name, version, author, and formatting for timestamps. This makes it easy to update application-wide settings from a single location.
+
+---
+
+### 📂 `src/menu/` - Interactive CLI Menu System
+
+This module manages the user-facing interactive command-line interface.
+
+- **`src/menu/main_menu.py`**: Implements the main interactive menu loop of the application. It presents the user with the primary choices, such as selecting a processing mode (local vs. cloud) or initiating the analysis.
+
+- **`src/menu/model_selection.py`**: Handles the sub-menus for selecting a specific AI model. It contains the logic to display available models, handle user input, and validate model availability before proceeding.
+
+- **`src/menu/navigation.py`**: Provides utility functions for creating a clean and consistent command-line interface. This includes functions for clearing the screen and printing standardized headers.
+
+---
+
+### 📂 `src/models/` - AI Model Clients
+
+This module contains the clients for communicating with the various supported AI model APIs.
+
+- **`src/models/ollama_client.py`**: Implements the client for interacting with local Ollama models. It handles sending requests to the Ollama server running on the user's machine, providing a privacy-first analysis option.
+
+- **`src/models/openai_client.py`**: Contains the client for the OpenAI API. It manages API key handling, constructs the request payload, and sends the analysis prompt to GPT models like GPT-3.5-turbo.
+
+- **`src/models/gemini_client.py`**: Implements the client for the Google Gemini API. Similar to the OpenAI client, it handles API key management and communication with Google's language models.
+
+---
+
+### 📂 `src/storage/` - Data Storage
+
+This module is responsible for handling the persistence of analysis results.
+
+- **`src/storage/local_storage.py`**: Manages saving the generated style profiles to the user's local filesystem. It creates both a machine-readable JSON file and a human-readable TXT report, with personalized and timestamped filenames.
+
+---
+
+### 📂 `src/utils/` - Utility Functions
+
+This module provides a collection of helper functions used across the entire application.
+
+- **`src/utils/formatters.py`**: Contains functions for formatting the final analysis output. It takes the raw data from the analysis and organizes it into a structured, human-readable report for the TXT file.
+
+- **`src/utils/text_processing.py`**: Provides essential utilities for handling text files. This includes reading files with fallback encoding, extracting basic statistics (word/sentence counts), and sanitizing filenames to prevent errors.
+
+- **`src/utils/user_profile.py`**: Manages the collection of the user's name and other contextual information. This data is used to personalize the analysis output and provide better context to the AI models.
+
+---
+
+## 📂 `install/` - Installation Files
+
+This directory contains scripts and files related to the installation and setup of the project.
+
+- **`install/requirements.txt`**: Lists the Python packages that the project depends on. This file is used by pip to install all necessary dependencies automatically.
+
+- **`install/install_cli.bat` & `quick_install.bat`**: Windows batch scripts that automate the installation process. They handle dependency installation and environment setup for Windows users.
+
+---
+
+## 📂 `documentation/` - Project Documentation
+
+This directory holds detailed markdown files that document various aspects of the project's implementation and features.
+
+- **`documentation/*.md`**: A collection of markdown files providing in-depth technical documentation. This includes guides on implementation details, feature explanations, and future improvement plans.
+
+---
+
+## 📂 `default text/` - Sample Data
+
+This directory contains sample text files used for demonstrating and testing the analysis capabilities of the application.
+
+- **`default text/*.txt`**: Plain text files containing sample writing. These are used as default inputs for the analysis, allowing new users to test the system immediately.
+
+---
+
+## 📂 `test/` - Test Scripts
+
+This directory contains scripts for testing the functionality of the application.
+
+- **`test/*.py`**: Python scripts designed to test specific modules and features of the application. These help ensure that the modular implementation is working correctly and that bug fixes are effective.
