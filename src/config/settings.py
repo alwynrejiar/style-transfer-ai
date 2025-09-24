@@ -5,7 +5,7 @@ Contains all constants, API endpoints, and model configurations.
 
 # Application Information
 APPLICATION_NAME = "Style Transfer AI"
-VERSION = "1.0.0"
+VERSION = "1.2.0"
 AUTHOR = "Style Transfer AI Team"
 
 # API Configuration

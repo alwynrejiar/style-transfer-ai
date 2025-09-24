@@ -11,7 +11,7 @@ def read_long_description():
 
 setup(
     name="style-transfer-ai",
-    version="1.1.0",
+    version="1.2.0",
     description="Advanced stylometry analysis system with modular architecture",
     long_description=read_long_description(),
     long_description_content_type="text/markdown",
