@@ -78,6 +78,12 @@ python run.py
 - **Local storage**: Secure local file storage with timestamped profiles
 - Individual file analysis + consolidated profiling
 
+✅ **Flexible Input Options**:
+- **File-based analysis**: Traditional text file processing
+- **Custom text input**: Direct text entry without file management
+- **Sample file support**: Built-in test files for quick evaluation
+- **Smart validation**: Automatic text length checking and user guidance
+
 ✅ **Privacy & Flexibility**:
 - Local processing for confidential content
 - Multiple cloud API options (OpenAI, Gemini)
@@ -324,6 +330,43 @@ The analyzer features a **hierarchical menu system** for intuitive model selecti
 
 **Navigation:** Use '0' to go back to the previous menu or exit the application.
 
+### Input Options
+Choose from **three flexible input methods** for text analysis:
+
+**1. Sample Files (Recommended for Testing)**
+- Use built-in test files for immediate evaluation
+- Perfect for first-time users and feature testing
+- Pre-validated content ensures reliable analysis
+
+**2. Custom File Paths**
+- Specify your own text files for analysis
+- Supports multiple files for comprehensive profiling
+- Automatic file validation and error handling
+
+**3. Direct Text Input (NEW)**
+- **No files needed**: Enter text directly into the application
+- **Copy & paste**: Analyze content from any source (emails, documents, web pages)
+- **Flexible length**: From single paragraphs to full documents
+- **Smart validation**: Automatic length checking and user guidance
+- **Perfect for**: Quick analysis without file management
+
+**Example Direct Text Usage:**
+```
+Options:
+1. Use sample files (recommended for testing)
+2. Specify your own file paths  
+3. Enter custom text directly (no files needed)
+
+Enter your choice (1-3): 3
+
+Enter your text (press Enter twice to finish):
+This is my writing sample for analysis...
+[Continue entering text]
+[Press Enter twice to complete]
+
+✓ Text captured: 125 words, 650 characters
+```
+
 ### Enhanced Output
 The analyzer generates **personalized stylometric fingerprints**:
 - **Individual analyses** for each text file with 25-point deep analysis
@@ -516,6 +559,19 @@ ollama pull gemma3:1b
 - Long names are truncated to 50 characters
 - Empty names default to "Anonymous_User"
 - Files are timestamped for unique identification
+
+**Configuration Checker Error**:
+```
+Error: Configuration checker not found at /usr/local/lib/python3.12/dist-packages/check_config.py
+```
+This has been fixed in v1.1.0+ with integrated checking:
+```bash
+# Update to latest version
+pip install --upgrade --force-reinstall style-transfer-ai
+
+# Or fresh installation
+pip uninstall style-transfer-ai && pip install style-transfer-ai
+```
 
 **File Not Found**:
 - Verify text files exist in project directory

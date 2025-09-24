@@ -25,6 +25,9 @@ setup(
     package_data={
         "": ["*.md", "*.txt", "*.json"],
     },
+    data_files=[
+        ('', ['check_config.py']),
+    ],
     install_requires=[
         "requests>=2.25.0",
         # Optional dependencies (users can install as needed)
@@ -41,7 +44,8 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "style-transfer-ai=src.main:cli_entry_point"
+            "style-transfer-ai=src.main:cli_entry_point",
+            "style-transfer-ai-config=check_config:main"
         ]
     },
     python_requires=">=3.7",

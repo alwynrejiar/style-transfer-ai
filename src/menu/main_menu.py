@@ -68,18 +68,18 @@ def handle_analyze_style(processing_mode='enhanced'):
             print("No model selected. Analysis cancelled.")
             return
         
-        # Get file paths from user
-        file_paths = get_file_paths()
+        # Get input from user (file paths or custom text)
+        input_data = get_file_paths()
         
-        if not file_paths:
-            print("No files selected. Analysis cancelled.")
+        if not input_data:
+            print("No input provided. Analysis cancelled.")
             return
         
         # Prepare model parameters based on selection
         if model_info['use_local_model']:
             # Local Ollama model
             style_profile = create_enhanced_style_profile(
-                file_paths, 
+                input_data, 
                 use_local=True, 
                 model_name=model_info['selected_model'], 
                 processing_mode=processing_mode
@@ -113,7 +113,7 @@ def handle_analyze_style(processing_mode='enhanced'):
                 return
             
             style_profile = create_enhanced_style_profile(
-                file_paths,
+                input_data,
                 use_local=False,
                 api_type=model_type,
                 api_client=api_client,
@@ -281,23 +281,92 @@ def handle_cleanup_reports():
 
 
 def handle_check_configuration():
-    """Handle configuration checking."""
+    """Handle configuration checking with fallback mechanisms."""
     try:
         print("\nRunning configuration check...")
         
-        # Get the path to the project root (where check_config.py is located)
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(os.path.dirname(current_dir))
-        check_config_path = os.path.join(project_root, "check_config.py")
-        
-        if os.path.exists(check_config_path):
-            # Run the check_config.py script
-            result = subprocess.run([sys.executable, check_config_path], 
-                                 capture_output=False, text=True, cwd=project_root)
+        # Method 1: Try to import and run the integrated checker
+        try:
+            from ..main import check_system_requirements
+            results = check_system_requirements()
             
-            print(f"\nConfiguration check completed with exit code: {result.returncode}")
-        else:
-            print(f"\nError: Configuration checker not found at {check_config_path}")
+            print("\n" + "="*60)
+            print("SYSTEM CONFIGURATION CHECK RESULTS")
+            print("="*60)
+            
+            if results['success']:
+                print("✅ All system requirements are met!")
+            else:
+                print("❌ Some issues were found:")
+                for issue in results.get('issues', []):
+                    print(f"  • {issue}")
+            
+            if results.get('warnings'):
+                print("\n⚠️  Warnings:")
+                for warning in results['warnings']:
+                    print(f"  • {warning}")
+            
+            if results.get('recommendations'):
+                print("\n💡 Recommendations:")
+                for rec in results['recommendations']:
+                    print(f"  • {rec}")
+            
+            print("="*60)
+            print("Configuration check completed successfully!")
+            
+        except ImportError:
+            # Method 2: Try to run standalone check_config.py script
+            print("Trying standalone configuration checker...")
+            
+            # Look for check_config.py in various locations
+            possible_paths = [
+                # In the same directory as the package
+                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "check_config.py"),
+                # In the package root
+                os.path.join(sys.prefix, "check_config.py"),
+                # In site-packages
+                os.path.join(sys.prefix, "lib", "python" + sys.version[:3], "site-packages", "check_config.py"),
+            ]
+            
+            config_script_found = False
+            for check_config_path in possible_paths:
+                if os.path.exists(check_config_path):
+                    print(f"Found configuration checker at: {check_config_path}")
+                    result = subprocess.run([sys.executable, check_config_path], 
+                                         capture_output=False, text=True)
+                    print(f"\nConfiguration check completed with exit code: {result.returncode}")
+                    config_script_found = True
+                    break
+            
+            if not config_script_found:
+                # Method 3: Basic manual checks
+                print("Running basic configuration checks...")
+                print("\n" + "="*60)
+                print("BASIC SYSTEM CHECK")
+                print("="*60)
+                
+                # Check Python version
+                print(f"✅ Python version: {sys.version.split()[0]}")
+                
+                # Check basic imports
+                basic_modules = ['sys', 'os', 'json', 'datetime']
+                for module in basic_modules:
+                    try:
+                        __import__(module)
+                        print(f"✅ {module}: Available")
+                    except ImportError:
+                        print(f"❌ {module}: Missing")
+                
+                # Check for requests
+                try:
+                    import requests
+                    print("✅ requests: Available")
+                except ImportError:
+                    print("❌ requests: Missing (required for API calls)")
+                    print("  Install with: pip install requests")
+                
+                print("="*60)
+                print("Basic configuration check completed!")
         
         input("\nPress Enter to continue...")
         
@@ -305,6 +374,9 @@ def handle_check_configuration():
         print("\n\nReturning to main menu...")
     except Exception as e:
         print(f"\nError running configuration check: {e}")
+        print("This might indicate installation issues.")
+        print("Try reinstalling with: pip install --force-reinstall style-transfer-ai")
+        input("\nPress Enter to continue...")
 
 
 def handle_generate_content():

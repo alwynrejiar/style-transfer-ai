@@ -49,9 +49,27 @@ def check_system_requirements():
     if sys.version_info < (3, 7):
         issues.append("Python 3.7 or higher is required")
     
+    # Add recommendations list
+    recommendations = []
+    
+    # Check Python version with confirmation
+    if sys.version_info >= (3, 7):
+        print(f"✅ Python version: {sys.version.split()[0]}")
+    
+    # Check for required dependencies
+    required_deps = {
+        'requests': 'HTTP requests (required for API calls)'
+    }
+    
+    for dep, description in required_deps.items():
+        try:
+            __import__(dep)
+            print(f"✅ {dep}: Available")
+        except ImportError:
+            issues.append(f"Required dependency '{dep}' not installed - {description}")
+    
     # Check for optional dependencies
     optional_deps = {
-        'requests': 'HTTP requests (required for OpenAI, Gemini)',
         'openai': 'OpenAI API integration',
         'google.generativeai': 'Google Gemini integration'
     }
@@ -59,13 +77,18 @@ def check_system_requirements():
     for dep, description in optional_deps.items():
         try:
             __import__(dep)
+            print(f"✅ {dep}: Available")
         except ImportError:
             warnings.append(f"Optional dependency '{dep}' not installed - {description}")
+            if dep == 'openai':
+                recommendations.append("Install OpenAI: pip install openai")
+            elif dep == 'google.generativeai':
+                recommendations.append("Install Gemini: pip install google-generativeai")
     
     # Check directory structure
     required_dirs = [
         'src/config',
-        'src/utils',
+        'src/utils', 
         'src/models',
         'src/analysis',
         'src/storage',
@@ -75,11 +98,31 @@ def check_system_requirements():
     for directory in required_dirs:
         if not os.path.exists(directory):
             issues.append(f"Required directory missing: {directory}")
+        else:
+            print(f"✅ Directory: {directory}")
+    
+    # Check for Ollama connection (optional)
+    try:
+        import requests
+        response = requests.get("http://localhost:11434/api/tags", timeout=2)
+        if response.status_code == 200:
+            print("✅ Ollama server: Running")
+            models = response.json().get('models', [])
+            if models:
+                print(f"✅ Available models: {len(models)} found")
+            else:
+                warnings.append("No Ollama models found. Run 'ollama pull gpt-oss:20b' or 'ollama pull gemma3:1b'")
+        else:
+            warnings.append("Ollama server not responding properly")
+    except:
+        warnings.append("Ollama server not running (local models unavailable)")
+        recommendations.append("Start Ollama: Run 'ollama serve' in terminal")
     
     return {
         'success': len(issues) == 0,
         'issues': issues,
-        'warnings': warnings
+        'warnings': warnings,
+        'recommendations': recommendations
     }
 
 

@@ -81,11 +81,12 @@ def get_file_paths():
     print(f"\nOptions:")
     print("1. Use sample files (recommended for testing)")
     print("2. Specify your own file paths")
+    print("3. Enter custom text directly (no files needed)")
     print("="*50)
     
     while True:
         try:
-            choice = input("\nEnter your choice (1-2): ").strip()
+            choice = input("\nEnter your choice (1-3): ").strip()
             if choice == "1":
                 if valid_defaults:
                     print(f"✓ Using {len(valid_defaults)} sample files")
@@ -112,11 +113,74 @@ def get_file_paths():
                 else:
                     print("No valid files provided. Using sample files as fallback.")
                     return valid_defaults if valid_defaults else DEFAULT_FILE_PATHS
+            
+            elif choice == "3":
+                return get_custom_text_input()
             else:
-                print("Invalid choice. Please enter 1 or 2.")
+                print("Invalid choice. Please enter 1, 2, or 3.")
         except KeyboardInterrupt:
             print("\n\nOperation cancelled by user.")
             return valid_defaults if valid_defaults else []
+
+
+def get_custom_text_input():
+    """
+    Get custom text input directly from the user.
+    
+    Returns:
+        dict: Dictionary containing custom text with special marker
+    """
+    print("\n" + "="*50)
+    print("CUSTOM TEXT INPUT")
+    print("="*50)
+    print("Enter your text for analysis. You can:")
+    print("• Paste a single paragraph or document")
+    print("• Enter multiple paragraphs (empty line to finish)")
+    print("• Minimum recommended: 100+ words for meaningful analysis")
+    print("="*50)
+    
+    text_lines = []
+    print("\nEnter your text (press Enter twice to finish):")
+    print("-" * 50)
+    
+    empty_lines = 0
+    while True:
+        try:
+            line = input()
+            if not line.strip():
+                empty_lines += 1
+                if empty_lines >= 2:  # Two consecutive empty lines to finish
+                    break
+                text_lines.append("")  # Keep single empty lines for formatting
+            else:
+                empty_lines = 0
+                text_lines.append(line)
+        except KeyboardInterrupt:
+            print("\n\nInput cancelled by user.")
+            return []
+    
+    combined_text = "\n".join(text_lines).strip()
+    
+    if not combined_text:
+        print("⚠️ No text entered. Please try again.")
+        return []
+    
+    word_count = len(combined_text.split())
+    print(f"\n✓ Text captured: {word_count} words, {len(combined_text)} characters")
+    
+    if word_count < 50:
+        print("⚠️ Warning: Text is quite short. Consider adding more content for better analysis.")
+        confirm = input("Continue with this text? (y/n): ").strip().lower()
+        if confirm not in ['y', 'yes']:
+            return []
+    
+    # Return a special format to indicate this is custom text, not file paths
+    return {
+        'type': 'custom_text',
+        'text': combined_text,
+        'word_count': word_count,
+        'source': 'direct_input'
+    }
 
 
 def get_cloud_storage_preference():

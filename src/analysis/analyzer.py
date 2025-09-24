@@ -48,12 +48,12 @@ def analyze_style(text_to_analyze, use_local=True, model_name=None, api_type=Non
         return "Error: Unknown API type or configuration"
 
 
-def create_enhanced_style_profile(file_paths, use_local=True, model_name=None, api_type=None, api_client=None, processing_mode="enhanced"):
+def create_enhanced_style_profile(input_data, use_local=True, model_name=None, api_type=None, api_client=None, processing_mode="enhanced"):
     """
-    Creates an enhanced comprehensive style profile from multiple text samples.
+    Creates an enhanced comprehensive style profile from text samples or direct input.
     
     Args:
-        file_paths (list): List of file paths containing user's writing samples
+        input_data (list or dict): Either list of file paths or dict with custom text
         use_local (bool): Whether to use local Ollama model or cloud APIs
         model_name (str): The specific model to use (for local models)
         api_type (str): 'openai' or 'gemini' for cloud APIs
@@ -76,43 +76,86 @@ def create_enhanced_style_profile(file_paths, use_local=True, model_name=None, a
     combined_text = ""
     file_info = []
     
-    print(f"\nFound {len(file_paths)} text sample(s) for enhanced deep analysis")
-    
-    for file_path in file_paths:
-        file_content = read_text_file(file_path)
+    # Check if input is custom text or file paths
+    if isinstance(input_data, dict) and input_data.get('type') == 'custom_text':
+        # Handle custom text input
+        print(f"\nAnalyzing custom text input ({input_data['word_count']} words)")
         
-        if "Error" not in file_content:
-            print(f"  Processing: {file_path}")
+        file_content = input_data['text']
+        source_name = "custom_text_input"
+        
+        # Calculate basic statistics for the text
+        stats = extract_basic_stats(file_content)
+        
+        file_info.append({
+            'filename': source_name,
+            'word_count': stats['word_count'],
+            'character_count': stats['character_count'],
+            'source': 'direct_input'
+        })
+        
+        # Perform deep analysis on the text
+        print(f"  Performing deep analysis...")
+        individual_analysis = analyze_style(file_content, use_local, model_name, api_type, api_client, user_profile, processing_mode)
+        
+        all_analyses.append({
+            'filename': source_name,
+            'word_count': stats['word_count'],
+            'character_count': stats['character_count'],
+            'source': 'direct_input',
+            'analysis': individual_analysis
+        })
+        
+        combined_text = file_content
+        print(f"  Analysis completed for custom text")
+        
+    else:
+        # Handle file paths (original logic)
+        file_paths = input_data if isinstance(input_data, list) else []
+        
+        if not file_paths:
+            return {
+                'profile_created': False,
+                'error': 'No valid input provided'
+            }
+        
+        print(f"\nFound {len(file_paths)} text sample(s) for enhanced deep analysis")
+        
+        for file_path in file_paths:
+            file_content = read_text_file(file_path)
             
-            # Calculate basic statistics for this file
-            stats = extract_basic_stats(file_content)
-            
-            file_info.append({
-                'filename': file_path,
-                'word_count': stats['word_count'],
-                'character_count': stats['character_count']
-            })
-            
-            # Individual analysis
-            print(f"  Performing deep analysis...")
-            individual_analysis = analyze_style(file_content, use_local, model_name, api_type, api_client, user_profile, processing_mode)
-            
-            all_analyses.append({
-                'filename': file_path,
-                'word_count': stats['word_count'],
-                'character_count': stats['character_count'],
-                'analysis': individual_analysis
-            })
-            
-            combined_text += f"\n\n--- From {file_path} ---\n{file_content}"
-            print(f"  Analysis completed for {file_path}")
-        else:
-            print(f"  Error with {file_path}: {file_content}")
+            if "Error" not in file_content:
+                print(f"  Processing: {file_path}")
+                
+                # Calculate basic statistics for this file
+                stats = extract_basic_stats(file_content)
+                
+                file_info.append({
+                    'filename': file_path,
+                    'word_count': stats['word_count'],
+                    'character_count': stats['character_count']
+                })
+                
+                # Individual analysis
+                print(f"  Performing deep analysis...")
+                individual_analysis = analyze_style(file_content, use_local, model_name, api_type, api_client, user_profile, processing_mode)
+                
+                all_analyses.append({
+                    'filename': file_path,
+                    'word_count': stats['word_count'],
+                    'character_count': stats['character_count'],
+                    'analysis': individual_analysis
+                })
+                
+                combined_text += f"\n\n--- From {file_path} ---\n{file_content}"
+                print(f"  Analysis completed for {file_path}")
+            else:
+                print(f"  Error with {file_path}: {file_content}")
     
     if not all_analyses:
         return {
             'profile_created': False,
-            'error': 'No valid files could be analyzed'
+            'error': 'No valid input could be analyzed'
         }
     
     # Perform enhanced statistical analysis on combined text
