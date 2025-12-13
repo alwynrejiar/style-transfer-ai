@@ -2,6 +2,8 @@
 
 🎯 **Firebase-Free Local Edition - Advanced stylometry analysis system with personalized linguistic fingerprinting and privacy-first local processing**
 
+![State-Level Buildathon Qualification](assets/image.png)
+
 ## 🚀 Quick Start
 
 ### Method 1: One-Line Installation (Recommended)
@@ -28,7 +30,8 @@ style-transfer-ai
 git clone https://github.com/alwynrejicser/style-transfer-ai.git
 cd style-transfer-ai
 pip install requests
-python run.py
+python run.py            # CLI mode
+python run_gui.py        # Desktop GUI
 ```
 
 **📋 Quick Setup Notes:**
@@ -69,6 +72,12 @@ python run.py
 - **Automatic fallback**: Graceful degradation when models unavailable
 - **Intuitive navigation**: Main menu → Sub-menus with back navigation
 - **Professional interface**: Clean, emoji-free design for serious analysis
+
+✅ **🖥️ Desktop GUI (CustomTkinter)**:
+- **Multi-view UI**: Dashboard, Generation Studio, Profiles Hub, Settings
+- **Live charts**: Radar visualization + readability bars
+- **Non-blocking**: Background threads keep UI responsive during model calls
+- **One-click runs**: `python run_gui.py` launches the full experience
 
 ✅ **Enhanced Deep Analysis**:
 - **25-point stylometric framework** (upgraded from 15-point)
@@ -140,6 +149,7 @@ style-transfer-ai
 
 # Or in development mode
 python run.py
+python run_gui.py  # Launch the desktop GUI
 ```
 
 **🎯 No additional dependencies required!** The package automatically installs all necessary components.
@@ -230,6 +240,18 @@ style-transfer-ai --analyze sample.txt --output "my_analysis"
 | `--cloud` | Force use of cloud models (OpenAI/Gemini) | `style-transfer-ai --analyze file.txt --cloud` |
 | `--output NAME` | Base name for output files (no extension) | `style-transfer-ai --analyze file.txt --output my_profile` |
 | `--help` | Show help message and exit | `style-transfer-ai --help` |
+
+## GUI Usage (Desktop)
+
+```bash
+python run_gui.py
+```
+
+- Choose a model (Ollama local by default) and toggle Turbo if you want faster statistical-only runs
+- Load a `.txt` file or paste text, then click **Analyze Text** for deep stylometry
+- View radar chart + readability bars, and save outputs from the dashboard
+- Use **Generation Studio** to load a saved profile and generate on-brand content
+- Manage saved profiles in **Profiles**, set API keys / cleanup in **Settings**
 
 ### Advanced CLI Workflows
 
@@ -410,7 +432,8 @@ style-transfer-ai/
 │   ├── menu/                          # Interactive menu system
 │   ├── config/                        # Configuration management
 │   ├── storage/                       # Local storage only
-│   └── utils/                         # Utility functions
+│   ├── utils/                         # Utility functions
+│   └── gui/                           # CustomTkinter desktop UI
 ├── install/                           # Installation scripts
 │   ├── install_cli.bat               # Windows batch installer
 │   ├── quick_install.bat             # Quick setup
@@ -419,7 +442,8 @@ style-transfer-ai/
 ├── install_one_line.ps1              # One-line PowerShell installer
 ├── path_one_line.txt                 # PATH-only setup command
 ├── style_analyzer_enhanced.py        # Legacy analyzer (still functional)
-├── run.py                            # Development entry point
+├── run.py                            # Development CLI entry point
+├── run_gui.py                        # Desktop GUI entry point
 ├── setup.py                          # Main package setup
 ├── README.md                         # This file
 ├── default text/                     # Sample text files

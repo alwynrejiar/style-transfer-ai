@@ -40,6 +40,16 @@ Style Transfer AI now includes powerful content generation and style transfer ca
 
 ## How to Use
 
+### From the Desktop GUI (Generation Studio)
+1. Run `python run_gui.py`
+2. Open **Generation** tab
+3. Load a saved style profile (from prior analyses)
+4. Pick content type, topic, tone, and length
+5. Click **Generate Content**; review output + metrics
+6. Save or copy the generated text
+
+For style transfer, use the same tab with a source text and choose the desired transfer type/intensity.
+
 ### 1. Generate Content with Style Profile
 
 ```
