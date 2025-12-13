@@ -8,15 +8,18 @@ This system creates a personalized AI that learns your writing style and generat
 ## **Phase 1: System Architecture**
 
 ### **Core Components:**
-1. **Style Analyzer** - Extracts your writing patterns
-2. **Profile Storage** - Saves your style fingerprint
-3. **Generation Engine** - Creates text in your style
-4. **User Interface** - Handles input/output
+1. **Style Analyzer** (`src/analysis`) - Extracts writing patterns and readability metrics
+2. **Profile Storage** (`src/storage`) - Saves and loads style fingerprints locally
+3. **Generation Engine** (`src/generation`) - Creates content in the user style and performs style transfer
+4. **Interfaces** (`run.py`, `run_gui.py`) - CLI menu and CustomTkinter desktop GUI
 
 ### **Data Flow:**
 ```
-Your Text → Style Analysis → Style Profile → Text Generation Request → AI Output (in your style)
+Your Text → Style Analysis → Style Profile → (GUI/CLI) → Text Generation Request → AI Output (in your style)
 ```
+
+- **Model routing**: Prefers local Ollama (`gpt-oss:20b`, `gemma3:1b`); falls back to OpenAI/Gemini when configured.
+- **UI glue**: `src/gui/app.py` orchestrates background threads, charts, and storage while calling shared backends.
 
 ---
 
@@ -33,8 +36,8 @@ Analyzes your writing samples to identify:
 
 ### **How It Works:**
 ```python
-# Uses local GPT-OSS 2B model via Ollama
-analyze_style(your_text) → detailed_style_profile
+# Uses local GPT-OSS 20B by default via Ollama; cloud fallback optional
+analyze_style(your_text, model_name="gpt-oss:20b", use_local=True) → detailed_style_profile
 ```
 
 ### **Output Example:**
@@ -64,7 +67,7 @@ analyze_style(your_text) → detailed_style_profile
   "comprehensive_profile": "Detailed style description",
   "total_word_count": 2500,
   "sample_count": 4,
-  "model_used": "gpt-oss:2b",
+  "model_used": "gpt-oss:20b",
   "unique_markers": ["specific phrases", "habits"]
 }
 ```
@@ -101,17 +104,19 @@ Write in the user's authentic style:
 
 ## **Phase 5: Complete Implementation**
 
-### **File Structure:**
+### **File Structure (current):**
 ```
 style-transfer-ai/
-├── stylometry_analyzer.py      # Style analysis engine
-├── style_generator.py          # Text generation with style
-├── user_interface.py          # Simple UI for interaction
-├── user_style_profile.json    # Your saved style profile
-└── sample_texts/              # Your writing samples
-    ├── sample1.txt
-    ├── sample2.txt
-    └── sample3.txt
+├── run.py                        # CLI entry
+├── run_gui.py                    # CustomTkinter desktop entry
+├── src/
+│   ├── analysis/                 # analyze_style, metrics
+│   ├── generation/               # ContentGenerator, StyleTransfer
+│   ├── storage/                  # local profile save/load, cleanup
+│   ├── gui/                      # app.py, styles, utils (radar charts, threading)
+│   └── models/                   # Ollama/OpenAI/Gemini clients
+├── stylometry fingerprints/      # Saved JSON/TXT profiles
+└── default text/                 # Sample texts
 ```
 
 ### **Core Functions:**
@@ -130,19 +135,16 @@ def generate_styled_text(request, style_profile) → generated_text
 def apply_style_constraints(prompt, style_rules) → styled_prompt
 ```
 
-#### **3. User Interface:**
-```python
-def collect_user_samples() → text_files
-def display_style_analysis() → formatted_output
-def handle_generation_request() → styled_response
-```
+#### **3. User Interface (GUI + CLI):**
+- **CLI**: Interactive menus in `run.py` / `src/menu` for analysis and generation.
+- **GUI**: `src/gui/app.py` offers Dashboard (analysis + charts), Generation Studio (profile-backed content), Profiles Hub (load/preview), and Settings (API keys, cleanup). Uses `ThreadedTask` for non-blocking calls.
 
 ---
 
 ## **Phase 6: Usage Workflow**
 
 ### **Initial Setup (One Time):**
-1. **Install Ollama** and download GPT-OSS 2B model
+1. **Install Ollama** and download GPT-OSS 20B (fast: gemma3:1b optional)
 2. **Provide 3-5 writing samples** (emails, documents, etc.)
 3. **Run style analysis** to create your profile
 4. **Review and save** your style fingerprint
@@ -162,7 +164,9 @@ def handle_generation_request() → styled_response
 ```bash
 # Install Ollama
 # Download model
-ollama pull gpt-oss:2b
+ollama pull gpt-oss:20b
+# Optional fast model
+ollama pull gemma3:1b
 
 # Start server
 ollama serve
@@ -170,28 +174,17 @@ ollama serve
 
 ### **Python Dependencies:**
 ```bash
-pip install requests json os
+pip install -r install/requirements.txt
+# or use the packaged installer / pip install style-transfer-ai
 ```
 
 ### **Key Code Components:**
 
-#### **Style Analysis Function:**
-- Sends comprehensive prompts to local LLM
-- Extracts 30+ style dimensions
-- Creates quantifiable style metrics
-- Saves structured analysis
-
-#### **Generation Function:**
-- Loads saved style profile
-- Constructs style-aware prompts
-- Generates text with style constraints
-- Applies post-processing for consistency
-
-#### **Profile Management:**
-- JSON storage for persistence
-- Version control for profile updates
-- Backup and restore capabilities
-- Profile comparison tools
+- **Style Analysis**: `src/analysis/analyzer.py` + `metrics.py` compute lexical diversity, readability, punctuation, and 25-point deep analysis.
+- **Generation & Transfer**: `src/generation/content_generator.py` builds prompts from profiles; `style_transfer.py` restyles existing text.
+- **Quality & Metrics**: `src/generation/quality_control.py` scores generated text; radar values come from `src/gui/utils.py`.
+- **GUI Layer**: `src/gui/app.py` renders radar charts (matplotlib) and readability bars; `ThreadedTask` keeps UI responsive.
+- **Profile Storage**: `src/storage/local_storage.py` saves JSON/TXT fingerprints with timestamps; cleanup utilities remove old reports.
 
 ---
 
