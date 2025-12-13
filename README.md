@@ -1,6 +1,6 @@
 # Style Transfer AI - Enhanced Deep Stylometry Analyzer v1.1.0
 
-🎯 **Firebase-Free Local Edition - Advanced stylometry analysis system with personalized linguistic fingerprinting and privacy-first local processing**
+🎯  Advanced stylometry analysis system with personalized linguistic fingerprinting and privacy-first local processing**
 
 ![State-Level Buildathon Qualification](assets/image.png)
 
