@@ -1,4 +1,4 @@
-# Style Transfer AI - Enhanced Deep Stylometry Analyzer v1.1.0
+# Stylomex - Enhanced Deep Stylometry Analyzer v1.1.0
 
 🎯  Advanced stylometry analysis system with personalized linguistic fingerprinting and privacy-first local processing**
 
