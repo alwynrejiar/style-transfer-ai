@@ -9,6 +9,7 @@ __author__ = "Style Transfer AI Team"
 __description__ = "Advanced stylometry analysis system with modular architecture"
 
 # Package-level imports for convenience
-from .main import cli_entry_point, main
+# Removing these to avoid circular imports with main.py <-> src
+# from .main import cli_entry_point, main
 
-__all__ = ['cli_entry_point', 'main']
+__all__ = []

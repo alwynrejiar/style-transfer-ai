@@ -6,11 +6,10 @@ Orchestrates the stylometry analysis workflow.
 from datetime import datetime
 from .prompts import create_enhanced_deep_prompt
 from .metrics import calculate_readability_metrics, analyze_text_statistics
-from ..models.ollama_client import analyze_with_ollama
-from ..models.openai_client import analyze_with_openai
-from ..models.gemini_client import analyze_with_gemini
+from .metrics import calculate_readability_metrics, analyze_text_statistics
 from ..utils.text_processing import read_text_file, extract_basic_stats
 from ..utils.user_profile import get_user_profile
+from ..config.settings import TIMESTAMP_FORMAT
 from ..config.settings import TIMESTAMP_FORMAT
 
 
@@ -36,6 +35,11 @@ def analyze_style(text_to_analyze, use_local=True, model_name=None, api_type=Non
     if not use_local and (not api_type or not api_client):
         raise ValueError("api_type and api_client are required when use_local=False")
     
+    # Lazy imports to avoid circular dependencies
+    from ..models.ollama_client import analyze_with_ollama
+    from ..models.openai_client import analyze_with_openai
+    from ..models.gemini_client import analyze_with_gemini
+
     prompt = create_enhanced_deep_prompt(text_to_analyze, user_profile)
     
     if use_local:
