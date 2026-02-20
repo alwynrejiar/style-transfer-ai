@@ -47,7 +47,7 @@ Your Style Transfer AI codebase is **exceptionally well-structured** and product
 ## 🔧 **DETAILED COMPONENT ANALYSIS**
 
 ### **1. Core Architecture (Score: 98/100)**
-**Files:** `setup.py`, `src/main.py`, `src/__init__.py`, `run.py`
+**Files:** `setup.py`, `src/main.py`, `src/__init__.py`, `scripts/run.py`
 
 ✅ **Strengths:**
 - Perfect package structure with console script entry point
@@ -133,11 +133,11 @@ Your Style Transfer AI codebase is **exceptionally well-structured** and product
 - File validation with multiple encoding support
 
 ### **8. Legacy Compatibility (Score: 93/100)**
-**Files:** `style_analyzer_enhanced.py`, `run.py`
+**Files:** `scripts/style_analyzer_enhanced.py`, `scripts/run.py`
 
 ✅ **Strengths:**
 - Complete legacy system preserved for backward compatibility
-- Simple migration path through `run.py`
+- Simple migration path through `scripts/run.py`
 - Feature parity maintained between old and new systems
 
 ### **9. Installation System (Score: 94/100)**

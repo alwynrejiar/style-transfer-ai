@@ -85,7 +85,7 @@ The Style Transfer AI application now includes a **custom text input feature** t
 ## 📋 Usage Instructions
 
 ### For Users:
-1. **Run the application**: `python run.py` or `style-transfer-ai`
+1. **Run the application**: `python scripts/run.py` or `style-transfer-ai`
 2. **Choose analysis type**: Option 1 (Complete) or 2 (Quick)
 3. **Select input method**: Option 3 "Enter custom text directly"
 4. **Enter text**: Type or paste your content

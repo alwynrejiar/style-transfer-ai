@@ -30,8 +30,8 @@ style-transfer-ai
 git clone https://github.com/alwynrejicser/style-transfer-ai.git
 cd style-transfer-ai
 pip install requests
-python run.py            # CLI mode
-python run_gui.py        # Desktop GUI
+python scripts/run.py            # CLI mode
+python scripts/run_gui.py        # Desktop GUI
 ```
 
 **📋 Quick Setup Notes:**
@@ -77,7 +77,7 @@ python run_gui.py        # Desktop GUI
 - **Multi-view UI**: Dashboard, Generation Studio, Profiles Hub, Settings
 - **Live charts**: Radar visualization + readability bars
 - **Non-blocking**: Background threads keep UI responsive during model calls
-- **One-click runs**: `python run_gui.py` launches the full experience
+- **One-click runs**: `python scripts/run_gui.py` launches the full experience
 
 ✅ **Enhanced Deep Analysis**:
 - **25-point stylometric framework** (upgraded from 15-point)
@@ -148,8 +148,8 @@ ollama serve
 style-transfer-ai
 
 # Or in development mode
-python run.py
-python run_gui.py  # Launch the desktop GUI
+python scripts/run.py
+python scripts/run_gui.py  # Launch the desktop GUI
 ```
 
 **🎯 No additional dependencies required!** The package automatically installs all necessary components.
@@ -244,7 +244,7 @@ style-transfer-ai --analyze sample.txt --output "my_analysis"
 ## GUI Usage (Desktop)
 
 ```bash
-python run_gui.py
+python scripts/run_gui.py
 ```
 
 - Choose a model (Ollama local by default) and toggle Turbo if you want faster statistical-only runs
@@ -406,7 +406,7 @@ The analyzer generates **personalized stylometric fingerprints**:
 ## API Key Configuration
 
 ### Method 1: Direct Code Modification
-Replace the placeholders in `style_analyzer_enhanced.py`:
+Replace the placeholders in `scripts/style_analyzer_enhanced.py`:
 
 ```python
 OPENAI_API_KEY = "your-actual-openai-api-key-here"
@@ -434,22 +434,29 @@ style-transfer-ai/
 │   ├── storage/                       # Local storage only
 │   ├── utils/                         # Utility functions
 │   └── gui/                           # CustomTkinter desktop UI
+│   └── utils/                         # Utility functions
+├── gui/                                # Streamlit UI pages
 ├── install/                           # Installation scripts
 │   ├── install_cli.bat               # Windows batch installer
 │   ├── quick_install.bat             # Quick setup
 │   ├── requirements.txt              # Dependencies
 │   └── setup.py                      # Package configuration
+├── scripts/                          # Entry points and legacy CLI
+│   ├── run.py                        # Development entry point
+│   ├── run_gui.py                    # Desktop GUI entry point
+│   ├── run_gui.bat                   # Windows GUI launcher
+│   └── style_analyzer_enhanced.py    # Legacy analyzer (still functional)
+├── app.py                            # Streamlit app entry point
 ├── install_one_line.ps1              # One-line PowerShell installer
 ├── path_one_line.txt                 # PATH-only setup command
-├── style_analyzer_enhanced.py        # Legacy analyzer (still functional)
-├── run.py                            # Development CLI entry point
-├── run_gui.py                        # Desktop GUI entry point
 ├── setup.py                          # Main package setup
 ├── README.md                         # This file
-├── default text/                     # Sample text files
-│   ├── about_my_pet.txt             # Sample analysis file
-│   └── about_my_pet_1.txt           # Additional samples
-├── documentation/                    # Technical documentation
+├── data/                             # Data files
+│   └── samples/                      # Sample text files
+│       ├── about_my_pet.txt         # Sample analysis file
+│       ├── about_my_pet_1.txt       # Additional samples
+│       └── about_my_pet_2.txt       # Additional samples
+├── docs/                             # Technical documentation
 └── {name}_stylometric_profile_*.json # Your personalized analysis output
 └── {name}_stylometric_profile_*.txt  # Human-readable analysis output
 ```

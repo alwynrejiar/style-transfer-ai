@@ -62,7 +62,7 @@ pip install requests openai google-generativeai
 ### **3. Run the Application**
 ```bash
 # This always works
-python run.py
+python scripts/run.py
 ```
 
 ### **4. Test It Works**
@@ -104,7 +104,7 @@ pip install -e .
 ### **4. Run the Application**
 ```bash
 # Method 1: Direct run (always works)
-python run.py
+python scripts/run.py
 
 # Method 2: CLI command (only if pip install -e . worked)
 style-transfer-ai
@@ -155,7 +155,7 @@ style-transfer-ai
 ### **Quick Test**
 ```bash
 # Run the application
-python run.py
+python scripts/run.py
 
 # Or if installed as package:
 style-transfer-ai
@@ -175,7 +175,7 @@ STYLE ANALYSIS:
 ```
 
 ### **Test with Sample Files**
-The app comes with sample text files in `default text/` folder - perfect for testing!
+The app comes with sample text files in `data/samples/` folder - perfect for testing!
 
 ---
 
@@ -191,7 +191,7 @@ This happens when pip can't install the package. **Solution:**
 pip install requests
 
 # Then run directly:
-python run.py
+python scripts/run.py
 ```
 
 ### **Other Common Issues & Solutions**
@@ -206,7 +206,7 @@ python run.py
 
 **❌ "Module not found"**
 - Make sure you're in the correct directory (`cd style-transfer-ai`)
-- Use `python run.py` instead of `style-transfer-ai`
+- Use `python scripts/run.py` instead of `style-transfer-ai`
 
 **❌ "No such file or directory"**
 - Make sure you cloned the repository correctly
@@ -224,10 +224,12 @@ python run.py
 style-transfer-ai/
 ├── src/                     # Main application code
 ├── install/                 # Installation scripts
-├── default text/            # Sample text files for testing
-├── documentation/           # Detailed guides
+├── data/                    # Data files
+│   └── samples/            # Sample text files for testing
+├── docs/                    # Detailed guides
 ├── config/                  # Configuration templates
-├── run.py                   # Quick start script
+├── scripts/                 # Entry points and helpers
+│   └── run.py               # Quick start script
 ├── setup.py                 # Package installation
 └── README.md               # Project overview
 ```
@@ -243,7 +245,7 @@ Once installed, you can:
 - ✅ Save results locally
 - ✅ Work with virtually any text file format
 
-**Need help?** Check the `documentation/` folder for detailed guides!
+**Need help?** Check the `docs/` folder for detailed guides!
 
 ---
 

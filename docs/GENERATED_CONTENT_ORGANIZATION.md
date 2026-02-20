@@ -17,7 +17,7 @@ style-transfer-ai/
 │   ├── ni_stylometric_profile_20250919_041512.json
 │   └── [other style profiles...]
 ├── src/
-├── default text/
+├── data/samples/
 └── [other project files]
 ```
 

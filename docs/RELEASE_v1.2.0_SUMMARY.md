@@ -162,7 +162,7 @@ Users can now analyze their writing samples instantly by simply copying and past
 
 ## 🖥️ **Post-1.2.0 Enhancement (Current Dev Branch)**
 
-- **CustomTkinter Desktop GUI**: `python run_gui.py` launches a multi-view app (Dashboard, Generation Studio, Profiles, Settings)
+- **CustomTkinter Desktop GUI**: `python scripts/run_gui.py` launches a multi-view app (Dashboard, Generation Studio, Profiles, Settings)
 - **Live Visuals**: Radar chart + readability bars, threaded to avoid UI blocking during model calls
 - **Model Routing**: Prefers local Ollama (`gpt-oss:20b`, `gemma3:1b`) with OpenAI/Gemini fallback when keys are provided
 - **Profile Workflows**: Load/save local profiles, generate on-brand content, and run cleanup from Settings

@@ -11,7 +11,7 @@ This system creates a personalized AI that learns your writing style and generat
 1. **Style Analyzer** (`src/analysis`) - Extracts writing patterns and readability metrics
 2. **Profile Storage** (`src/storage`) - Saves and loads style fingerprints locally
 3. **Generation Engine** (`src/generation`) - Creates content in the user style and performs style transfer
-4. **Interfaces** (`run.py`, `run_gui.py`) - CLI menu and CustomTkinter desktop GUI
+4. **Interfaces** (`scripts/run.py`, `scripts/run_gui.py`) - CLI menu and CustomTkinter desktop GUI
 
 ### **Data Flow:**
 ```
@@ -107,8 +107,9 @@ Write in the user's authentic style:
 ### **File Structure (current):**
 ```
 style-transfer-ai/
-├── run.py                        # CLI entry
-├── run_gui.py                    # CustomTkinter desktop entry
+├── scripts/
+│   ├── run.py                   # CLI entry
+│   ├── run_gui.py               # CustomTkinter desktop entry
 ├── src/
 │   ├── analysis/                 # analyze_style, metrics
 │   ├── generation/               # ContentGenerator, StyleTransfer
@@ -116,7 +117,7 @@ style-transfer-ai/
 │   ├── gui/                      # app.py, styles, utils (radar charts, threading)
 │   └── models/                   # Ollama/OpenAI/Gemini clients
 ├── stylometry fingerprints/      # Saved JSON/TXT profiles
-└── default text/                 # Sample texts
+└── data/samples/                 # Sample texts
 ```
 
 ### **Core Functions:**
@@ -136,7 +137,7 @@ def apply_style_constraints(prompt, style_rules) → styled_prompt
 ```
 
 #### **3. User Interface (GUI + CLI):**
-- **CLI**: Interactive menus in `run.py` / `src/menu` for analysis and generation.
+- **CLI**: Interactive menus in `scripts/run.py` / `src/menu` for analysis and generation.
 - **GUI**: `src/gui/app.py` offers Dashboard (analysis + charts), Generation Studio (profile-backed content), Profiles Hub (load/preview), and Settings (API keys, cleanup). Uses `ThreadedTask` for non-blocking calls.
 
 ---

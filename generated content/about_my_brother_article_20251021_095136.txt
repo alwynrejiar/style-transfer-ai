@@ -1,0 +1,19 @@
+============================================================
+STYLE TRANSFER AI - GENERATED CONTENT
+============================================================
+
+Content Type: article
+Topic/Prompt: about my brother
+Target Length: 300 words
+Actual Length: 28 words
+Tone: creative
+Model Used: openai
+Generated: 20251021_095136
+Style Profile: Unknown
+Additional Context: nil
+
+============================================================
+GENERATED CONTENT
+============================================================
+
+OpenAI API Error: Error code: 401 - {'error': {'message': 'Incorrect API key provided: your-ope************here. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
