@@ -28,7 +28,7 @@ style-transfer-ai
 git clone https://github.com/alwynrejicser/style-transfer-ai.git
 cd style-transfer-ai
 pip install requests
-python run.py
+python scripts/run.py
 ```
 
 **📋 Quick Setup Notes:**
@@ -133,7 +133,7 @@ ollama serve
 style-transfer-ai
 
 # Or in development mode
-python run.py
+python scripts/run.py
 ```
 
 **🎯 No additional dependencies required!** The package automatically installs all necessary components.
@@ -341,7 +341,7 @@ The analyzer generates **personalized stylometric fingerprints**:
 ## API Key Configuration
 
 ### Method 1: Direct Code Modification
-Replace the placeholders in `style_analyzer_enhanced.py`:
+Replace the placeholders in `scripts/style_analyzer_enhanced.py`:
 
 ```python
 OPENAI_API_KEY = "your-actual-openai-api-key-here"
@@ -368,21 +368,27 @@ style-transfer-ai/
 │   ├── config/                        # Configuration management
 │   ├── storage/                       # Local storage only
 │   └── utils/                         # Utility functions
+├── gui/                                # Streamlit UI pages
 ├── install/                           # Installation scripts
 │   ├── install_cli.bat               # Windows batch installer
 │   ├── quick_install.bat             # Quick setup
 │   ├── requirements.txt              # Dependencies
 │   └── setup.py                      # Package configuration
+├── scripts/                          # Entry points and legacy CLI
+│   ├── run.py                        # Development entry point
+│   ├── run_gui.bat                   # Windows GUI launcher
+│   └── style_analyzer_enhanced.py    # Legacy analyzer (still functional)
+├── app.py                            # Streamlit app entry point
 ├── install_one_line.ps1              # One-line PowerShell installer
 ├── path_one_line.txt                 # PATH-only setup command
-├── style_analyzer_enhanced.py        # Legacy analyzer (still functional)
-├── run.py                            # Development entry point
 ├── setup.py                          # Main package setup
 ├── README.md                         # This file
-├── default text/                     # Sample text files
-│   ├── about_my_pet.txt             # Sample analysis file
-│   └── about_my_pet_1.txt           # Additional samples
-├── documentation/                    # Technical documentation
+├── data/                             # Data files
+│   └── samples/                      # Sample text files
+│       ├── about_my_pet.txt         # Sample analysis file
+│       ├── about_my_pet_1.txt       # Additional samples
+│       └── about_my_pet_2.txt       # Additional samples
+├── docs/                             # Technical documentation
 └── {name}_stylometric_profile_*.json # Your personalized analysis output
 └── {name}_stylometric_profile_*.txt  # Human-readable analysis output
 ```

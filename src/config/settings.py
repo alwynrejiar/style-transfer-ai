@@ -55,9 +55,9 @@ PROCESSING_MODES = {
 
 # File Processing
 DEFAULT_FILE_PATHS = [
-    "default text/about_my_pet.txt", 
-    "default text/about_my_pet_1.txt",
-    "default text/about_my_pet_2.txt"
+    "data/samples/about_my_pet.txt",
+    "data/samples/about_my_pet_1.txt",
+    "data/samples/about_my_pet_2.txt"
 ]
 SUPPORTED_ENCODINGS = ["utf-8", "latin-1"]
 MAX_FILENAME_LENGTH = 30

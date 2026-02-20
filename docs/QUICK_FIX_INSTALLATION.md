@@ -13,12 +13,12 @@ cd style-transfer-ai
 pip install requests
 
 # 3. Run the app directly:
-python run.py
+python scripts/run.py
 ```
 
 ### **That's it!** 
 
-If `python run.py` shows you a menu with options like:
+If `python scripts/run.py` shows you a menu with options like:
 ```
 STYLE TRANSFER AI - ADVANCED STYLOMETRY ANALYSIS
 1. Analyze Writing Style
@@ -44,14 +44,14 @@ git clone https://github.com/alwynrejicser/style-transfer-ai.git
 cd style-transfer-ai
 
 # Then try again:
-python run.py
+python scripts/run.py
 ```
 
 ### **Error: "pip not found"**
 ```bash
 # Use this instead:
 python -m pip install requests
-python run.py
+python scripts/run.py
 ```
 
 ---
@@ -60,7 +60,7 @@ python run.py
 
 The app comes with sample text files and can do statistical analysis without any AI models. You can test it immediately!
 
-When you run `python run.py`:
+When you run `python scripts/run.py`:
 1. Choose option "2. Quick Style Analysis (Statistical Only)"
 2. Choose "1. Use sample files"
 3. Watch it work!
@@ -76,4 +76,4 @@ If you're still stuck, send a screenshot of:
 2. What directory you're in (`pwd` on Mac/Linux or `cd` on Windows)
 3. Python version (`python --version`)
 
-**The main thing: Use `python run.py` not `style-transfer-ai` command!**
+**The main thing: Use `python scripts/run.py` not `style-transfer-ai` command!**

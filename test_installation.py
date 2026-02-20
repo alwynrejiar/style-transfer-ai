@@ -74,9 +74,9 @@ def test_sample_files():
     print("\n📄 Testing sample files...")
     
     sample_files = [
-        'default text/about_my_pet.txt',
-        'default text/about_my_pet_1.txt',
-        'default text/about_my_pet_2.txt'
+        'data/samples/about_my_pet.txt',
+        'data/samples/about_my_pet_1.txt',
+        'data/samples/about_my_pet_2.txt'
     ]
     
     found_files = 0
@@ -129,7 +129,7 @@ def main():
     if all(results):
         print("🎉 ALL TESTS PASSED!")
         print("\n✅ Your installation is ready!")
-        print("Run: python run.py  OR  style-transfer-ai")
+        print("Run: python scripts/run.py  OR  style-transfer-ai")
     else:
         print("⚠️  Some tests failed or have warnings.")
         print("\n🔧 Next steps:")
