@@ -6,7 +6,8 @@ Usage:
     pyinstaller msstore/stylomex.spec
 
 Produces:
-    dist/Stylomex/Stylomex.exe   (one-dir bundle)
+    dist/Stylomex/Stylomex.exe       (GUI — no console window)
+    dist/Stylomex/StylomexCLI.exe    (CLI — runs in terminal)
 """
 
 import os
@@ -35,8 +36,12 @@ import customtkinter
 ctk_path = os.path.dirname(customtkinter.__file__)
 
 # ---------- Analysis --------------------------
+# Shared analysis for both GUI and CLI entry points
 a = Analysis(
-    [os.path.join(ROOT, "scripts", "run_gui.py")],
+    [
+        os.path.join(ROOT, "scripts", "run_gui.py"),
+        os.path.join(ROOT, "scripts", "run.py"),
+    ],
     pathex=[ROOT],
     binaries=[],
     datas=[
@@ -98,7 +103,8 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-exe = EXE(
+# ---------- GUI executable (no console) ----------
+gui_exe = EXE(
     pyz,
     a.scripts,
     [],
@@ -118,8 +124,30 @@ exe = EXE(
     version_file=os.path.join(ROOT, "msstore", "version_info.txt"),
 )
 
+# ---------- CLI executable (with console) ----------
+cli_exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name="StylomexCLI",
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=True,               # Console window for CLI
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon=os.path.join(ROOT, "msstore", "icons", "app.ico"),
+    version_file=os.path.join(ROOT, "msstore", "version_info.txt"),
+)
+
 coll = COLLECT(
-    exe,
+    gui_exe,
+    cli_exe,
     a.binaries,
     a.zipfiles,
     a.datas,
