@@ -6,7 +6,7 @@ Handles primary navigation and menu display.
 import sys
 import subprocess
 import os
-from ..config.settings import PROCESSING_MODES
+from ..config.settings import AVAILABLE_MODELS
 from ..analysis.analyzer import create_enhanced_style_profile
 from ..storage.local_storage import list_local_profiles, load_local_profile, cleanup_old_reports, save_style_profile_locally
 from .model_selection import (
@@ -16,6 +16,7 @@ from .model_selection import (
 )
 from ..models.openai_client import setup_openai_client
 from ..models.gemini_client import setup_gemini_client
+from ..models.ollama_client import list_ollama_models, pull_ollama_model, is_ollama_installed
 from ..utils.user_profile import get_file_paths
 from ..generation import ContentGenerator, StyleTransfer, QualityController
 
@@ -47,8 +48,11 @@ def display_main_menu():
     print("")
     print("DATA MANAGEMENT:")
     print("7. Cleanup Old Reports")
-    print("8. Switch Analysis Model")
-    print("9. Check Configuration")
+    print("8. Manage Local Models (Ollama)")
+    print("9. Switch Analysis Model")
+    print("10. Check Configuration")
+    print("11. Launch GUI")
+    print("12. Run Scripts (Utilities/Install)")
     print("0. Exit")
     print("="*60)
 
@@ -377,6 +381,237 @@ def handle_check_configuration():
         print("This might indicate installation issues.")
         print("Try reinstalling with: pip install --force-reinstall style-transfer-ai")
         input("\nPress Enter to continue...")
+
+
+def handle_model_management():
+    """Manage local Ollama models from the CLI."""
+    try:
+        if not is_ollama_installed():
+            if not handle_ollama_installation():
+                return
+        while True:
+            print("\n" + "="*60)
+            print("LOCAL MODEL MANAGEMENT (OLLAMA)")
+            print("="*60)
+            print("1. List installed models")
+            print("2. Download a model")
+            print("0. Return to main menu")
+
+            choice = input("\nEnter your choice (0-2): ").strip()
+            if choice == "0":
+                return
+            if choice == "1":
+                models, error = list_ollama_models()
+                if error:
+                    print(f"\n✗ {error}")
+                elif not models:
+                    print("\nNo models found. Use option 2 to download.")
+                else:
+                    print("\nInstalled models:")
+                    for model in models:
+                        print(f"• {model}")
+                input("\nPress Enter to continue...")
+            elif choice == "2":
+                available_ollama = [
+                    key for key, info in AVAILABLE_MODELS.items()
+                    if info.get("type") == "ollama"
+                ]
+
+                if not available_ollama:
+                    print("\nNo Ollama models configured.")
+                    input("\nPress Enter to continue...")
+                    continue
+
+                print("\nAvailable Ollama models:")
+                for idx, model_name in enumerate(available_ollama, 1):
+                    print(f"{idx}. {model_name}")
+
+                selection = input("\nSelect a model to download (0 to cancel): ").strip()
+                if selection == "0":
+                    continue
+                try:
+                    model_index = int(selection) - 1
+                    if 0 <= model_index < len(available_ollama):
+                        model_name = available_ollama[model_index]
+                        success, message = pull_ollama_model(model_name)
+                        status_symbol = "✓" if success else "✗"
+                        print(f"\n{status_symbol} {message}")
+                    else:
+                        print("\nInvalid model selection.")
+                except ValueError:
+                    print("\nInvalid input. Please enter a number.")
+                input("\nPress Enter to continue...")
+            else:
+                print("Invalid choice. Please enter 0-2.")
+    except KeyboardInterrupt:
+        print("\n\nReturning to main menu...")
+
+
+def handle_ollama_installation():
+    """Offer CLI installation options for Ollama on Windows."""
+    import webbrowser
+
+    print("\n✗ Ollama is not installed.")
+    print("You can install it via the official PowerShell script or a portable CLI zip.")
+
+    while True:
+        print("\nInstallation Options:")
+        print("1. Install via PowerShell script (admin required)")
+        print("2. Install portable CLI zip (manual path setup)")
+        print("3. Open download page")
+        print("4. Open a new PowerShell window")
+        print("0. Return to main menu")
+
+        choice = input("\nEnter your choice (0-4): ").strip()
+        if choice == "0":
+            return False
+        if choice == "1":
+            print("\nLaunching elevated installer...")
+            command = (
+                "Start-Process powershell -Verb RunAs -ArgumentList "
+                "'-ExecutionPolicy Bypass -Command irm https://ollama.com/install.ps1 | iex'"
+            )
+            subprocess.Popen(["powershell", "-ExecutionPolicy", "Bypass", "-Command", command])
+            print("\nWhen installation finishes, reopen the menu to manage models.")
+            input("\nPress Enter to return to the main menu...")
+            return False
+        if choice == "2":
+            default_url = "https://github.com/ollama/ollama/releases/latest/download/ollama-windows-amd64.zip"
+            destination = input("Install folder (default: C:\\Ollama): ").strip() or "C:\\Ollama"
+            download_url = input(f"Zip URL (default: {default_url}): ").strip() or default_url
+
+            print("\nDownloading and extracting Ollama...")
+            install_cmd = (
+                f"$dest='{destination}'; "
+                f"$zip='ollama.zip'; "
+                f"curl.exe -L -o $zip '{download_url}'; "
+                "if (-Not (Test-Path $dest)) { New-Item -ItemType Directory -Force -Path $dest | Out-Null }; "
+                "Expand-Archive -Path $zip -DestinationPath $dest -Force; "
+                "Remove-Item $zip; "
+                "[System.Environment]::SetEnvironmentVariable('Path', $env:Path + ';' + $dest, [System.EnvironmentVariableTarget]::User)"
+            )
+            subprocess.Popen(["powershell", "-ExecutionPolicy", "Bypass", "-Command", install_cmd])
+            print("\nPortable install started. Restart your terminal after it completes.")
+            input("\nPress Enter to return to the main menu...")
+            return False
+        if choice == "3":
+            webbrowser.open("https://ollama.ai/download")
+            input("\nPress Enter to return to the main menu...")
+            return False
+        if choice == "4":
+            subprocess.Popen(["powershell", "-NoExit"])
+            print("\n✓ Opened a new PowerShell window.")
+            input("\nPress Enter to return to the main menu...")
+            return False
+
+        print("Invalid choice. Please enter 0-4.")
+
+
+def handle_launch_gui():
+    """Launch available GUI frontends from the CLI."""
+    try:
+        while True:
+            print("\n" + "="*60)
+            print("LAUNCH GUI")
+            print("="*60)
+            print("1. CustomTkinter Desktop GUI")
+            print("2. Streamlit Web UI")
+            print("0. Return to main menu")
+
+            choice = input("\nEnter your choice (0-2): ").strip()
+            if choice == "0":
+                return
+            if choice == "1":
+                script_path = os.path.join("scripts", "run_gui.py")
+                if not os.path.exists(script_path):
+                    print("\n✗ Desktop GUI script not found.")
+                    input("\nPress Enter to continue...")
+                    continue
+                subprocess.Popen([sys.executable, script_path])
+                print("\n✓ Desktop GUI launched.")
+                return
+            if choice == "2":
+                try:
+                    import streamlit  # noqa: F401
+                except ImportError:
+                    print("\n✗ Streamlit is not installed. Run: pip install streamlit")
+                    input("\nPress Enter to continue...")
+                    continue
+
+                subprocess.Popen([sys.executable, "-m", "streamlit", "run", "app.py"])
+                print("\n✓ Streamlit UI launched.")
+                return
+            print("Invalid choice. Please enter 0-2.")
+    except KeyboardInterrupt:
+        print("\n\nReturning to main menu...")
+
+
+def handle_run_scripts():
+    """Run helper and installer scripts from the CLI."""
+    scripts = [
+        {"label": "Run CLI (scripts/run.py)", "path": os.path.join("scripts", "run.py")},
+        {"label": "Run Desktop GUI (scripts/run_gui.py)", "path": os.path.join("scripts", "run_gui.py")},
+        {"label": "Run Legacy Analyzer (scripts/style_analyzer_enhanced.py)", "path": os.path.join("scripts", "style_analyzer_enhanced.py")},
+        {"label": "Setup PATH (add_to_path.ps1)", "path": "add_to_path.ps1"},
+        {"label": "Setup PATH (setup_path.bat)", "path": "setup_path.bat"},
+        {"label": "Setup PATH (setup_auto_path.py)", "path": "setup_auto_path.py"},
+        {"label": "Run Config Check (check_config.py)", "path": "check_config.py"},
+        {"label": "Install CLI (install/install_cli.bat)", "path": os.path.join("install", "install_cli.bat")},
+        {"label": "Quick Install (install/quick_install.bat)", "path": os.path.join("install", "quick_install.bat")},
+        {"label": "Install One-Line (install/install_one_line.ps1)", "path": os.path.join("install", "install_one_line.ps1")},
+        {"label": "Install Full (install/install_style_transfer_ai.ps1)", "path": os.path.join("install", "install_style_transfer_ai.ps1")},
+        {"label": "Launch Streamlit UI (app.py)", "path": "app.py", "streamlit": True}
+    ]
+
+    try:
+        while True:
+            print("\n" + "="*60)
+            print("RUN SCRIPTS")
+            print("="*60)
+            for idx, script in enumerate(scripts, 1):
+                print(f"{idx}. {script['label']}")
+            print("0. Return to main menu")
+
+            choice = input("\nEnter your choice (0-{0}): ".format(len(scripts))).strip()
+            if choice == "0":
+                return
+            try:
+                script_index = int(choice) - 1
+                if 0 <= script_index < len(scripts):
+                    selected = scripts[script_index]
+                    script_path = selected["path"]
+                    if not os.path.exists(script_path):
+                        print(f"\n✗ Script not found: {script_path}")
+                        input("\nPress Enter to continue...")
+                        continue
+
+                    if selected.get("streamlit"):
+                        try:
+                            import streamlit  # noqa: F401
+                        except ImportError:
+                            print("\n✗ Streamlit is not installed. Run: pip install streamlit")
+                            input("\nPress Enter to continue...")
+                            continue
+                        subprocess.Popen([sys.executable, "-m", "streamlit", "run", script_path])
+                    elif script_path.endswith(".ps1"):
+                        subprocess.Popen(["powershell", "-ExecutionPolicy", "Bypass", "-File", script_path])
+                    elif script_path.endswith(".bat"):
+                        subprocess.Popen(["cmd", "/c", script_path])
+                    elif script_path.endswith(".py"):
+                        subprocess.Popen([sys.executable, script_path])
+                    else:
+                        print("\n✗ Unsupported script type.")
+                        input("\nPress Enter to continue...")
+                        continue
+
+                    print(f"\n✓ Launched: {selected['label']}")
+                    return
+                else:
+                    print("Invalid selection.")
+            except ValueError:
+                print("Invalid input. Please enter a number.")
+    except KeyboardInterrupt:
+        print("\n\nReturning to main menu...")
 
 
 def handle_generate_content():
@@ -1005,7 +1240,7 @@ def run_main_menu():
     while True:
         try:
             display_main_menu()
-            choice = input("\nEnter your choice (0-10): ").strip()
+            choice = input("\nEnter your choice (0-12): ").strip()
             
             if choice == "0":
                 print("\nThank you for using Style Transfer AI!")
@@ -1033,12 +1268,21 @@ def run_main_menu():
                 handle_cleanup_reports()
                 
             elif choice == "8":
+                handle_model_management()
+
+            elif choice == "9":
                 reset_model_selection()
                 print("\nModel selection reset. Please choose a new model:")
                 select_model_interactive()
                 
-            elif choice == "9":
+            elif choice == "10":
                 handle_check_configuration()
+
+            elif choice == "11":
+                handle_launch_gui()
+
+            elif choice == "12":
+                handle_run_scripts()
                 
             else:
                 print("Invalid choice. Please enter 0-10.")

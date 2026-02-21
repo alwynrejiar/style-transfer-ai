@@ -65,6 +65,8 @@ tmp/
 user_style_profiles/
 analysis_results/
 custom_samples/
+generated content/
+stylometry fingerprints/
 
 # Model Files (if downloading locally)
 models/

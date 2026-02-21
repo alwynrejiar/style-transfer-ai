@@ -11,7 +11,7 @@ def read_long_description():
 
 setup(
     name="style-transfer-ai",
-    version="1.2.0",
+    version="1.3.0",
     description="Advanced stylometry analysis system with modular architecture",
     long_description=read_long_description(),
     long_description_content_type="text/markdown",
@@ -30,17 +30,15 @@ setup(
     ],
     install_requires=[
         "requests>=2.25.0",
-        # Optional dependencies (users can install as needed)
-        # "openai>=1.0.0",          # For OpenAI API
-        # "google-generativeai",    # For Gemini API
+        "spacy>=3.5.0",
     ],
     extras_require={
         "openai": ["openai>=1.0.0"],
         "gemini": ["google-generativeai"],
         "all": [
-            "openai>=1.0.0", 
-            "google-generativeai"
-        ]
+            "openai>=1.0.0",
+            "google-generativeai",
+        ],
     },
     entry_points={
         "console_scripts": [
