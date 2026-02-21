@@ -20,7 +20,7 @@
 
   <Identity
     Name="AlwynRejicser.Stylomex"
-    Publisher="CN=YourPublisherId"
+    Publisher="CN=AlwynRejicser"
     Version="1.3.0.0"
     ProcessorArchitecture="x64" />
 
