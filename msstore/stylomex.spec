@@ -6,13 +6,12 @@ Usage:
     pyinstaller msstore/stylomex.spec
 
 Produces:
-    dist/Stylomex/Stylomex.exe       (GUI — no console window)
+    dist/Stylomex/Stylomex.exe       (Streamlit launcher — opens browser)
     dist/Stylomex/StylomexCLI.exe    (CLI — runs in terminal)
 """
 
 import os
 import sys
-import importlib
 
 block_cipher = None
 
@@ -22,7 +21,6 @@ ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))
 import spacy
 spacy_path = os.path.dirname(spacy.__file__)
 
-# Try to find en_core_web_sm
 try:
     import en_core_web_sm
     spacy_model_path = os.path.dirname(en_core_web_sm.__file__)
@@ -31,15 +29,14 @@ except ImportError:
     spacy_model_datas = []
     print("WARNING: en_core_web_sm not found — deep stylometry will be unavailable in the build.")
 
-# ---------- Locate customtkinter theme data ----------
-import customtkinter
-ctk_path = os.path.dirname(customtkinter.__file__)
+# ---------- Locate streamlit data ----------
+import streamlit
+streamlit_path = os.path.dirname(streamlit.__file__)
 
 # ---------- Analysis --------------------------
-# Shared analysis for both GUI and CLI entry points
 a = Analysis(
     [
-        os.path.join(ROOT, "scripts", "run_gui.py"),
+        os.path.join(ROOT, "scripts", "run_streamlit.py"),
         os.path.join(ROOT, "scripts", "run.py"),
     ],
     pathex=[ROOT],
@@ -47,19 +44,21 @@ a = Analysis(
     datas=[
         # Application source
         (os.path.join(ROOT, "src"), "src"),
+        (os.path.join(ROOT, "gui"), "gui"),
+        (os.path.join(ROOT, "app.py"), "."),
         (os.path.join(ROOT, "config"), "config"),
         (os.path.join(ROOT, "data"), "data"),
         (os.path.join(ROOT, "assets"), "assets"),
 
-        # CustomTkinter themes
-        (ctk_path, "customtkinter"),
+        # Streamlit static files (required for the web UI)
+        (streamlit_path, "streamlit"),
 
         # spaCy data
         (spacy_path, "spacy"),
     ] + spacy_model_datas,
     hiddenimports=[
         # Core app
-        "src", "src.main", "src.gui", "src.gui.app", "src.gui.styles", "src.gui.utils",
+        "src", "src.main",
         "src.config", "src.config.settings",
         "src.analysis", "src.analysis.analyzer", "src.analysis.metrics",
         "src.generation", "src.generation.content_generator", "src.generation.style_transfer",
@@ -68,10 +67,14 @@ a = Analysis(
         "src.menu", "src.menu.main_menu", "src.menu.model_selection", "src.menu.navigation",
         "src.utils",
 
-        # GUI frameworks
-        "customtkinter", "tkinter", "tkinter.filedialog",
-        "matplotlib", "matplotlib.backends.backend_tkagg",
-        "PIL", "PIL.Image", "PIL.ImageTk",
+        # Streamlit GUI modules
+        "gui", "gui.home", "gui.analyze", "gui.transfer", "gui.profiles", "gui.settings",
+
+        # Streamlit and web dependencies
+        "streamlit", "streamlit.web", "streamlit.web.cli",
+        "streamlit.runtime", "streamlit.runtime.scriptrunner",
+        "altair", "plotly",
+        "tornado", "tornado.web", "tornado.websocket",
 
         # NLP / analysis
         "spacy", "spacy.lang.en",
@@ -86,6 +89,7 @@ a = Analysis(
 
         # Stdlib commonly missed
         "json", "re", "collections", "statistics", "math", "datetime",
+        "socket", "webbrowser", "subprocess", "signal",
     ],
     hookspath=[],
     hooksconfig={},
@@ -93,7 +97,8 @@ a = Analysis(
     excludes=[
         "pytest", "sphinx", "notebook", "jupyter",
         "IPython", "ipykernel", "ipywidgets",
-        "streamlit",  # exclude web GUI — desktop only
+        "customtkinter",
+        "matplotlib",
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -103,7 +108,7 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-# ---------- GUI executable (no console) ----------
+# ---------- Streamlit launcher (no console window) ----------
 gui_exe = EXE(
     pyz,
     a.scripts,
@@ -114,7 +119,7 @@ gui_exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,              # NO console window for GUI app
+    console=False,              # No console — opens browser with Streamlit
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

@@ -512,40 +512,26 @@ def handle_ollama_installation():
 
 
 def handle_launch_gui():
-    """Launch available GUI frontends from the CLI."""
+    """Launch the Streamlit web GUI from the CLI."""
     try:
-        while True:
-            print("\n" + "="*60)
-            print("LAUNCH GUI")
-            print("="*60)
-            print("1. CustomTkinter Desktop GUI")
-            print("2. Streamlit Web UI")
-            print("0. Return to main menu")
+        print("\n" + "="*60)
+        print("LAUNCH STREAMLIT GUI")
+        print("="*60)
 
-            choice = input("\nEnter your choice (0-2): ").strip()
-            if choice == "0":
-                return
-            if choice == "1":
-                script_path = os.path.join("scripts", "run_gui.py")
-                if not os.path.exists(script_path):
-                    print("\n✗ Desktop GUI script not found.")
-                    input("\nPress Enter to continue...")
-                    continue
-                subprocess.Popen([sys.executable, script_path])
-                print("\n✓ Desktop GUI launched.")
-                return
-            if choice == "2":
-                try:
-                    import streamlit  # noqa: F401
-                except ImportError:
-                    print("\n✗ Streamlit is not installed. Run: pip install streamlit")
-                    input("\nPress Enter to continue...")
-                    continue
+        try:
+            import streamlit  # noqa: F401
+        except ImportError:
+            print("\n✗ Streamlit is not installed. Run: pip install streamlit")
+            input("\nPress Enter to continue...")
+            return
 
-                subprocess.Popen([sys.executable, "-m", "streamlit", "run", "app.py"])
-                print("\n✓ Streamlit UI launched.")
-                return
-            print("Invalid choice. Please enter 0-2.")
+        app_path = "app.py"
+        if not os.path.exists(app_path):
+            app_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "app.py")
+
+        subprocess.Popen([sys.executable, "-m", "streamlit", "run", app_path])
+        print("\n✓ Streamlit GUI launched in your browser.")
+        input("\nPress Enter to continue...")
     except KeyboardInterrupt:
         print("\n\nReturning to main menu...")
 
@@ -554,7 +540,7 @@ def handle_run_scripts():
     """Run helper and installer scripts from the CLI."""
     scripts = [
         {"label": "Run CLI (scripts/run.py)", "path": os.path.join("scripts", "run.py")},
-        {"label": "Run Desktop GUI (scripts/run_gui.py)", "path": os.path.join("scripts", "run_gui.py")},
+        {"label": "Run Streamlit GUI (scripts/run_streamlit.py)", "path": os.path.join("scripts", "run_streamlit.py")},
         {"label": "Run Legacy Analyzer (scripts/style_analyzer_enhanced.py)", "path": os.path.join("scripts", "style_analyzer_enhanced.py")},
         {"label": "Setup PATH (add_to_path.ps1)", "path": "add_to_path.ps1"},
         {"label": "Setup PATH (setup_path.bat)", "path": "setup_path.bat"},

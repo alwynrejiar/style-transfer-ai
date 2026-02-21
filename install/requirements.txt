@@ -9,10 +9,8 @@ spacy>=3.5.0
 # Visualization
 plotly>=5.0.0
 
-# GUI dependencies
-customtkinter>=5.2.0
-matplotlib>=3.7.0
-pillow>=10.0.0
+# Web GUI
+streamlit>=1.28.0
 
 # Optional: For better text processing
 nltk>=3.8

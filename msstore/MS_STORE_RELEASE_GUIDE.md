@@ -8,7 +8,7 @@ This guide walks you through packaging and publishing **Stylomex** (Style Transf
 
 | Component | Tool / Format |
 |---|---|
-| GUI Framework | CustomTkinter (desktop) |
+| GUI Framework | Streamlit (web UI in browser) |
 | Bundler | PyInstaller → standalone `.exe` |
 | Package Format | MSIX (required for MS Store) |
 | Packaging Tool | MakeAppx.exe (Windows SDK) |
