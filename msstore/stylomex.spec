@@ -48,7 +48,7 @@ a = Analysis(
         # Application source
         (os.path.join(ROOT, "src"), "src"),
         (os.path.join(ROOT, "config"), "config"),
-        (os.path.join(ROOT, "default text"), "default text"),
+        (os.path.join(ROOT, "data"), "data"),
         (os.path.join(ROOT, "assets"), "assets"),
 
         # CustomTkinter themes
