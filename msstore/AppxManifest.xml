@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AppxManifest.xml — Stylomex MSIX package manifest.
+
+  Before building:
+    1. Replace "CN=YourPublisherId" with the Subject from your MS Partner Center certificate.
+    2. Replace the Publisher display name and other placeholders as needed.
+    3. Ensure all referenced icon assets exist in the Assets/ folder of the package.
+
+  Reference: https://learn.microsoft.com/en-us/uwp/schemas/appxpackage/appx-package-manifest
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity
+    Name="AlwynRejicser.Stylomex"
+    Publisher="CN=YourPublisherId"
+    Version="1.3.0.0"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Stylomex</DisplayName>
+    <PublisherDisplayName>Alwyn Rejicser</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <Description>Advanced stylometry analysis and style transfer powered by AI. Analyze writing patterns, generate style profiles, and transfer writing styles with deep linguistic intelligence.</Description>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+    <Application
+      Id="Stylomex"
+      Executable="Stylomex.exe"
+      EntryPoint="Windows.FullTrustApplication">
+
+      <uap:VisualElements
+        DisplayName="Stylomex"
+        Description="Deep Stylometry Analysis &amp; Style Transfer"
+        BackgroundColor="#1a1a2e"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile
+          Wide310x150Logo="Assets\Wide310x150Logo.png"
+          Square71x71Logo="Assets\Square71x71Logo.png"
+          Square310x310Logo="Assets\Square310x310Logo.png"
+          ShortName="Stylomex" />
+        <uap:SplashScreen Image="Assets\SplashScreen.png" BackgroundColor="#1a1a2e" />
+      </uap:VisualElements>
+
+      <!-- File type associations (optional — lets users right-click → Open with Stylomex) -->
+      <Extensions>
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="textfiles">
+            <uap:DisplayName>Text Document</uap:DisplayName>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.txt</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
+
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <Capability Name="internetClient" />
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+
+</Package>
