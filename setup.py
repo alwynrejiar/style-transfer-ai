@@ -31,6 +31,7 @@ setup(
     install_requires=[
         "requests>=2.25.0",
         "spacy>=3.5.0",
+        "plotly>=5.0.0",
     ],
     extras_require={
         "openai": ["openai>=1.0.0"],

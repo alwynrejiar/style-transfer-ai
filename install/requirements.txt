@@ -6,6 +6,9 @@ google-generativeai>=0.3.0
 # NLP / Stylometry
 spacy>=3.5.0
 
+# Visualization
+plotly>=5.0.0
+
 # GUI dependencies
 customtkinter>=5.2.0
 matplotlib>=3.7.0

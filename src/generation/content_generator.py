@@ -11,6 +11,7 @@ from ..models.ollama_client import analyze_with_ollama
 from ..models.openai_client import analyze_with_openai  
 from ..models.gemini_client import analyze_with_gemini
 from ..utils.text_processing import extract_basic_stats
+from ..analysis.metrics import extract_deep_stylometry, calculate_style_similarity
 from ..config.settings import TIMESTAMP_FORMAT
 from .templates import GenerationTemplates
 
@@ -291,23 +292,33 @@ Generate the content now, ensuring it authentically reflects the specified writi
         return quality_metrics
     
     def _calculate_style_adherence(self, generated_text: str, style_profile: Dict) -> float:
-        """Calculate how well the generated content matches the target style profile."""
+        """
+        Calculate how well the generated text adheres to the target style profile
+        using deep stylometry extraction and multi-method similarity comparison.
         
-        # This would be a sophisticated comparison between generated content
-        # and original style profile characteristics
-        # For now, return a placeholder score
-        
+        Returns a score between 0.0 and 1.0 (1.0 = perfect match).
+        """
         try:
-            generated_stats = extract_basic_stats(generated_text)
-            original_stats = style_profile.get('statistical_analysis', {})
+            # Extract deep stylometry from the generated text
+            generated_ds = extract_deep_stylometry(generated_text)
             
-            # Compare key metrics
+            # Get target deep stylometry from the style profile
+            target_ds = style_profile.get('deep_stylometry', {})
+            
+            if generated_ds and target_ds:
+                # Full multi-method comparison
+                similarity = calculate_style_similarity(generated_ds, target_ds)
+                return similarity.get('combined_score', 0.5)
+            
+            # Fallback to basic stat comparison if deep stylometry unavailable
+            generated_stats = extract_basic_stats(generated_text)
+            original_stats = style_profile.get('statistical_analysis', style_profile.get('text_statistics', {}))
+            
             sentence_length_diff = abs(
                 generated_stats.get('avg_sentence_length', 15) - 
-                original_stats.get('average_sentence_length', 15)
+                original_stats.get('average_sentence_length', original_stats.get('avg_sentence_length', 15))
             )
             
-            # Simple scoring (would be more sophisticated in practice)
             score = max(0.0, 1.0 - (sentence_length_diff / 15.0))
             return min(1.0, score)
             

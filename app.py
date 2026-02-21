@@ -34,7 +34,7 @@ selection = st.sidebar.radio("Navigation", list(pages.keys()))
 
 st.sidebar.markdown("---")
 st.sidebar.info(
-    "**Version 1.2.0**\n"
+    "**Version 1.3.0**\n"
     "Local-First Stylometry & Style Transfer"
 )
 

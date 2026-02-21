@@ -10,6 +10,7 @@ from ..models.ollama_client import analyze_with_ollama
 from ..models.openai_client import analyze_with_openai
 from ..models.gemini_client import analyze_with_gemini
 from ..utils.text_processing import extract_basic_stats
+from ..analysis.metrics import extract_deep_stylometry, calculate_style_similarity
 from ..config.settings import TIMESTAMP_FORMAT
 from .templates import GenerationTemplates
 
@@ -442,22 +443,33 @@ Transform the content now:
         return quality_analysis
     
     def _calculate_style_match_score(self, transferred_content: str, target_style_profile: Dict) -> float:
-        """Calculate how well the transferred content matches the target style."""
+        """
+        Calculate how well the transferred content matches the target style
+        using deep stylometry extraction and multi-method similarity.
         
-        # This would involve sophisticated style comparison
-        # For now, return a placeholder score based on basic metrics
-        
+        Returns a score between 0.0 and 1.0 (1.0 = perfect match).
+        """
         try:
-            transferred_stats = extract_basic_stats(transferred_content)
-            target_stats = target_style_profile.get('statistical_analysis', {})
+            # Extract deep stylometry from the transferred content
+            transferred_ds = extract_deep_stylometry(transferred_content)
             
-            # Compare sentence length
+            # Get target deep stylometry from the style profile
+            target_ds = target_style_profile.get('deep_stylometry', {})
+            
+            if transferred_ds and target_ds:
+                similarity = calculate_style_similarity(transferred_ds, target_ds)
+                return similarity.get('combined_score', 0.5)
+            
+            # Fallback to basic stat comparison
+            transferred_stats = extract_basic_stats(transferred_content)
+            target_stats = target_style_profile.get('statistical_analysis',
+                                                      target_style_profile.get('text_statistics', {}))
+            
             sentence_length_score = self._compare_sentence_lengths(
                 transferred_stats.get('avg_sentence_length', 15),
-                target_stats.get('average_sentence_length', 15)
+                target_stats.get('average_sentence_length',
+                                 target_stats.get('avg_sentence_length', 15))
             )
-            
-            # Additional comparisons would be added here
             
             return sentence_length_score
             
@@ -560,8 +572,27 @@ Transform the content now:
         }
     
     def _calculate_similarity_score(self, analysis1: Dict, analysis2: Dict) -> float:
-        """Calculate similarity score between two analyses."""
-        return 0.70  # Placeholder
+        """Calculate similarity score between two analyses using available metrics."""
+        try:
+            # Use per-metric comparison for basic analyses
+            scores = []
+            
+            # Sentence length similarity
+            sl1 = analysis1.get('avg_sentence_length', 15)
+            sl2 = analysis2.get('avg_sentence_length', 15)
+            scores.append(max(0.0, 1.0 - abs(sl1 - sl2) / 15.0))
+            
+            # Lexical diversity similarity
+            ld1 = analysis1.get('lexical_diversity', 0.5)
+            ld2 = analysis2.get('lexical_diversity', 0.5)
+            scores.append(max(0.0, 1.0 - abs(ld1 - ld2)))
+            
+            # Formality match
+            scores.append(1.0 if analysis1.get('formality_level') == analysis2.get('formality_level') else 0.5)
+            
+            return round(sum(scores) / len(scores), 4) if scores else 0.5
+        except Exception:
+            return 0.5
     
     def _generate_style_recommendations(self, differences: Dict) -> List[str]:
         """Generate recommendations based on style differences."""

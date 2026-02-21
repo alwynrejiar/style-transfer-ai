@@ -8,6 +8,7 @@ import subprocess
 import os
 from ..config.settings import AVAILABLE_MODELS
 from ..analysis.analyzer import create_enhanced_style_profile
+from ..analysis.metrics import calculate_style_similarity, extract_deep_stylometry
 from ..storage.local_storage import list_local_profiles, load_local_profile, cleanup_old_reports, save_style_profile_locally
 from .model_selection import (
     select_model_interactive, 
@@ -46,13 +47,16 @@ def display_main_menu():
     print("5. Transfer Content to Different Style")
     print("6. Style Comparison & Analysis")
     print("")
+    print("COMPARISON & EVALUATION:")
+    print("7. Compare Saved Profiles (Deep Stylometry)")
+    print("")
     print("DATA MANAGEMENT:")
-    print("7. Cleanup Old Reports")
-    print("8. Manage Local Models (Ollama)")
-    print("9. Switch Analysis Model")
-    print("10. Check Configuration")
-    print("11. Launch GUI")
-    print("12. Run Scripts (Utilities/Install)")
+    print("8. Cleanup Old Reports")
+    print("9. Manage Local Models (Ollama)")
+    print("10. Switch Analysis Model")
+    print("11. Check Configuration")
+    print("12. Launch GUI")
+    print("13. Run Scripts (Utilities/Install)")
     print("0. Exit")
     print("="*60)
 
@@ -757,12 +761,15 @@ def handle_generate_content():
                     print(f"Word Count: {metadata.get('actual_length', 'Unknown')}")
                     print(f"Model Used: {metadata.get('model_used', 'Unknown')}")
                     
-                    # Handle style match score safely
-                    style_score = result.get('style_match_score', 'N/A')
+                    # Handle style adherence score (deep stylometry comparison)
+                    style_score = result.get('style_adherence_score', result.get('style_match_score', 'N/A'))
                     if isinstance(style_score, (int, float)):
-                        print(f"Style Match Score: {style_score:.2f}")
+                        bar_len = 30
+                        filled = int(style_score * bar_len)
+                        bar = '\u2588' * filled + '\u2591' * (bar_len - filled)
+                        print(f"Style Adherence:  [{bar}] {style_score:.1%}")
                     else:
-                        print(f"Style Match Score: {style_score}")
+                        print(f"Style Adherence: {style_score}")
                     
                     # Quality analysis if available
                     if 'quality_analysis' in result:
@@ -1008,7 +1015,16 @@ def handle_style_transfer():
                     print(f"Transfer Type: {metadata.get('transfer_type', 'Unknown')}")
                     print(f"Intensity: {metadata.get('intensity', 'Unknown')}")
                     print(f"Model Used: {metadata.get('model_used', 'Unknown')}")
-                    print(f"Style Match Score: {result.get('style_match_score', 'N/A'):.2f}")
+                    
+                    # Style match score (now powered by deep stylometry)
+                    style_score = result.get('style_match_score', 'N/A')
+                    if isinstance(style_score, (int, float)):
+                        bar_len = 30
+                        filled = int(style_score * bar_len)
+                        bar = '\u2588' * filled + '\u2591' * (bar_len - filled)
+                        print(f"Style Match:      [{bar}] {style_score:.1%}")
+                    else:
+                        print(f"Style Match Score: {style_score}")
                     
                     # Quality analysis if available
                     if 'quality_analysis' in result:
@@ -1093,6 +1109,199 @@ def handle_style_transfer():
         print("\n\nReturning to main menu...")
     except Exception as e:
         print(f"\nError in style transfer: {e}")
+
+
+def handle_compare_profiles():
+    """Compare two saved stylometric profiles using deep stylometry similarity."""
+    try:
+        print("\n" + "="*60)
+        print("COMPARE SAVED STYLOMETRIC PROFILES")
+        print("="*60)
+
+        profiles = list_local_profiles()
+        if not profiles or len(profiles) < 2:
+            print("\nYou need at least 2 saved profiles to compare.")
+            print("Run a style analysis first to create profiles.")
+            input("\nPress Enter to continue...")
+            return
+
+        # Display available profiles
+        print(f"\nFound {len(profiles)} saved profiles:\n")
+        for i, p in enumerate(profiles, 1):
+            filename = os.path.basename(p['filename'])
+            user_name = filename.split('_stylometric_profile_')[0] if '_stylometric_profile_' in filename else filename.replace('.json', '')
+            size_kb = p['size'] / 1024
+            print(f"  {i:2d}. {filename}  ({user_name}, {size_kb:.1f} KB, {p['modified']})")
+
+        # Select first profile
+        print("\n--- Select the FIRST profile ---")
+        choice1 = input("Enter profile number: ").strip()
+        try:
+            idx1 = int(choice1) - 1
+            if not (0 <= idx1 < len(profiles)):
+                print("Invalid selection.")
+                return
+        except ValueError:
+            print("Invalid input.")
+            return
+
+        # Select second profile
+        print("--- Select the SECOND profile ---")
+        choice2 = input("Enter profile number: ").strip()
+        try:
+            idx2 = int(choice2) - 1
+            if not (0 <= idx2 < len(profiles)):
+                print("Invalid selection.")
+                return
+        except ValueError:
+            print("Invalid input.")
+            return
+
+        if idx1 == idx2:
+            print("Please select two different profiles.")
+            return
+
+        # Load both profiles
+        print("\nLoading profiles...")
+        result1 = load_local_profile(profiles[idx1]['filename'])
+        result2 = load_local_profile(profiles[idx2]['filename'])
+
+        if not result1['success']:
+            print(f"Failed to load profile 1: {result1.get('message', 'Unknown error')}")
+            return
+        if not result2['success']:
+            print(f"Failed to load profile 2: {result2.get('message', 'Unknown error')}")
+            return
+
+        profile_data1 = result1['profile']
+        profile_data2 = result2['profile']
+
+        name1 = os.path.basename(profiles[idx1]['filename']).replace('.json', '')
+        name2 = os.path.basename(profiles[idx2]['filename']).replace('.json', '')
+
+        # Extract deep stylometry from saved profiles
+        ds1 = profile_data1.get('deep_stylometry', {})
+        ds2 = profile_data2.get('deep_stylometry', {})
+
+        if not ds1 or not ds2:
+            print("\nOne or both profiles lack deep stylometry data.")
+            print("Re-analyze the text with v1.3.0+ to include deep stylometry.")
+            input("\nPress Enter to continue...")
+            return
+
+        # Calculate similarity
+        print("\nCalculating deep stylometry similarity...\n")
+        similarity = calculate_style_similarity(ds1, ds2)
+
+        # Display results
+        print("="*60)
+        print("PROFILE COMPARISON RESULTS")
+        print("="*60)
+        print(f"\n  Profile A: {name1}")
+        print(f"  Profile B: {name2}")
+        print()
+
+        combined = similarity.get('combined_score', 0.0)
+        cosine = similarity.get('cosine_similarity', 0.0)
+        burrows = similarity.get('burrows_delta', 0.0)
+        ngram = similarity.get('ngram_overlap', 0.0)
+
+        # Combined score bar
+        bar_len = 40
+        filled = int(combined * bar_len)
+        bar = '\u2588' * filled + '\u2591' * (bar_len - filled)
+        print(f"  COMBINED SCORE:     [{bar}] {combined:.1%}")
+        print(f"  Cosine Similarity:  {cosine:.4f}  (30% weight)")
+        print(f"  Burrows' Delta:     {burrows:.4f}  (45% weight \u2014 gold standard)")
+        print(f"  N-gram Overlap:     {ngram:.4f}  (25% weight)")
+
+        # Interpretation
+        print()
+        if combined >= 0.85:
+            print("  \u2713 Very high similarity \u2014 likely the same author or very similar style.")
+        elif combined >= 0.65:
+            print("  ~ Moderate similarity \u2014 noticeable stylistic overlap.")
+        elif combined >= 0.40:
+            print("  \u25b3 Low similarity \u2014 some shared features, mostly different styles.")
+        else:
+            print("  \u2717 Very low similarity \u2014 distinctly different writing styles.")
+
+        # Side-by-side key metrics comparison
+        print("\n" + "-"*60)
+        print("KEY METRIC COMPARISON")
+        print("-"*60)
+
+        # Vocabulary richness
+        vr1 = ds1.get('vocabulary_richness', {})
+        vr2 = ds2.get('vocabulary_richness', {})
+        header = f"\n  {'Metric':<30}  {'Profile A':>12}  {'Profile B':>12}"
+        print(header)
+        divider_char = '\u2500'
+        print(f"  {divider_char*30}  {divider_char*12}  {divider_char*12}")
+        print(f"  {'Avg Word Length':<30}  {ds1.get('avg_word_length', 0):>12.4f}  {ds2.get('avg_word_length', 0):>12.4f}")
+        print(f"  {'Contraction Rate':<30}  {ds1.get('contraction_rate', 0):>12.4f}  {ds2.get('contraction_rate', 0):>12.4f}")
+        print(f"  {'Passive Voice Ratio':<30}  {ds1.get('passive_voice_ratio', 0):>12.4f}  {ds2.get('passive_voice_ratio', 0):>12.4f}")
+        print(f"  {'Punctuation Density':<30}  {ds1.get('punctuation_density', 0):>12.4f}  {ds2.get('punctuation_density', 0):>12.4f}")
+        print(f"  {'Question Ratio':<30}  {ds1.get('question_ratio', 0):>12.4f}  {ds2.get('question_ratio', 0):>12.4f}")
+        print(f"  {'Exclamation Ratio':<30}  {ds1.get('exclamation_ratio', 0):>12.4f}  {ds2.get('exclamation_ratio', 0):>12.4f}")
+        print(f"  {'Hapax Legomena Ratio':<30}  {vr1.get('hapax_legomena_ratio', 0):>12.4f}  {vr2.get('hapax_legomena_ratio', 0):>12.4f}")
+        yules_label = "Yule's K"
+        simpsons_label = "Simpson's Diversity"
+        print(f"  {yules_label:<30}  {vr1.get('yules_k', 0):>12.4f}  {vr2.get('yules_k', 0):>12.4f}")
+        print(f"  {simpsons_label:<30}  {vr1.get('simpsons_diversity', 0):>12.4f}  {vr2.get('simpsons_diversity', 0):>12.4f}")
+
+        # Top POS differences
+        from ..analysis.metrics import POS_TAGS
+        pos1 = ds1.get('pos_ratios', {})
+        pos2 = ds2.get('pos_ratios', {})
+        if pos1 and pos2:
+            pos_diffs = sorted(
+                [(tag, abs(pos1.get(tag, 0) - pos2.get(tag, 0))) for tag in POS_TAGS],
+                key=lambda x: x[1],
+                reverse=True
+            )
+            print(f"\n  Top POS Tag Differences:")
+            for tag, diff in pos_diffs[:5]:
+                print(f"    {tag:<8}  A={pos1.get(tag, 0):.4f}  B={pos2.get(tag, 0):.4f}  \u0394={diff:.4f}")
+
+        # Sentence length distribution
+        sl1 = ds1.get('sentence_length_distribution', {})
+        sl2 = ds2.get('sentence_length_distribution', {})
+        if sl1 and sl2:
+            print(f"\n  Sentence Length Distribution:")
+            print(f"    {'':>12}  {'Profile A':>12}  {'Profile B':>12}")
+            for key in ['mean', 'median', 'std_dev', 'min', 'max']:
+                print(f"    {key:>12}  {sl1.get(key, 0):>12.2f}  {sl2.get(key, 0):>12.2f}")
+
+        print("\n" + "="*60)
+
+        # Option to save comparison
+        save_choice = input("\nSave comparison results to file? (y/n): ").strip().lower()
+        if save_choice == 'y':
+            from datetime import datetime
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"profile_comparison_{timestamp}.txt"
+            try:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    f.write("STYLOMETRIC PROFILE COMPARISON\n")
+                    f.write("="*60 + "\n")
+                    f.write(f"Profile A: {name1}\n")
+                    f.write(f"Profile B: {name2}\n\n")
+                    f.write(f"Combined Score:     {combined:.4f}\n")
+                    f.write(f"Cosine Similarity:  {cosine:.4f}\n")
+                    f.write(f"Burrows' Delta:     {burrows:.4f}\n")
+                    f.write(f"N-gram Overlap:     {ngram:.4f}\n")
+                print(f"\u2713 Comparison saved as: {filename}")
+            except Exception as e:
+                print(f"\u2717 Failed to save: {e}")
+
+        input("\nPress Enter to continue...")
+
+    except KeyboardInterrupt:
+        print("\n\nReturning to main menu...")
+    except Exception as e:
+        print(f"\nError comparing profiles: {e}")
+        input("\nPress Enter to continue...")
 
 
 def handle_style_comparison():
@@ -1240,7 +1449,7 @@ def run_main_menu():
     while True:
         try:
             display_main_menu()
-            choice = input("\nEnter your choice (0-12): ").strip()
+            choice = input("\nEnter your choice (0-13): ").strip()
             
             if choice == "0":
                 print("\nThank you for using Style Transfer AI!")
@@ -1265,27 +1474,30 @@ def run_main_menu():
                 handle_style_comparison()
                 
             elif choice == "7":
-                handle_cleanup_reports()
+                handle_compare_profiles()
                 
             elif choice == "8":
+                handle_cleanup_reports()
+                
+            elif choice == "9":
                 handle_model_management()
 
-            elif choice == "9":
+            elif choice == "10":
                 reset_model_selection()
                 print("\nModel selection reset. Please choose a new model:")
                 select_model_interactive()
                 
-            elif choice == "10":
+            elif choice == "11":
                 handle_check_configuration()
 
-            elif choice == "11":
+            elif choice == "12":
                 handle_launch_gui()
 
-            elif choice == "12":
+            elif choice == "13":
                 handle_run_scripts()
                 
             else:
-                print("Invalid choice. Please enter 0-10.")
+                print("Invalid choice. Please enter 0-13.")
                 
         except KeyboardInterrupt:
             print("\n\nExiting Style Transfer AI...")
