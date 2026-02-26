@@ -87,6 +87,12 @@ python scripts/run_gui.py        # Desktop GUI
 - **Local storage**: Secure local file storage with timestamped profiles
 - Individual file analysis + consolidated profiling
 
+✅ **Cognitive Bridging / Analogy Engine (New)**:
+- **Concept Density Detection**: Identifies intellectually dense passages using multi-factor heuristics (lexical density, syllabic complexity, etc.).
+- **Educational Analogy Generation**: automatically generates clarifying analogies and practical examples for complex ideas.
+- **Cognitive Note Injection**: Inserts `[Cognitive Note]` blocks inline without altering the original text's meaning.
+- **Customizable Domains**: choose from 7 domains (Sports, Tech, Nature, etc.) to tailor analogies to the reader's background.
+
 ✅ **Flexible Input Options**:
 - **File-based analysis**: Traditional text file processing
 - **Custom text input**: Direct text entry without file management
