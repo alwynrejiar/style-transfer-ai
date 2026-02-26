@@ -6,9 +6,15 @@ Orchestrates the stylometry analysis workflow.
 from datetime import datetime
 from .prompts import create_enhanced_deep_prompt
 from .metrics import calculate_readability_metrics, analyze_text_statistics, extract_deep_stylometry
+from .analogy_engine import detect_conceptual_density, AnalogyInjector
 from ..utils.text_processing import read_text_file, extract_basic_stats
 from ..utils.user_profile import get_user_profile
-from ..config.settings import TIMESTAMP_FORMAT
+from ..config.settings import (
+    TIMESTAMP_FORMAT,
+    ANALOGY_AUGMENTATION_ENABLED,
+    DEFAULT_ANALOGY_DOMAIN,
+    CONCEPTUAL_DENSITY_THRESHOLD,
+)
 
 
 def analyze_style(text_to_analyze, use_local=True, model_name=None, api_type=None, api_client=None, user_profile=None, processing_mode="enhanced"):
@@ -50,7 +56,16 @@ def analyze_style(text_to_analyze, use_local=True, model_name=None, api_type=Non
         return "Error: Unknown API type or configuration"
 
 
-def create_enhanced_style_profile(input_data, use_local=True, model_name=None, api_type=None, api_client=None, processing_mode="enhanced"):
+def create_enhanced_style_profile(
+    input_data,
+    use_local=True,
+    model_name=None,
+    api_type=None,
+    api_client=None,
+    processing_mode="enhanced",
+    analogy_augmentation=None,
+    analogy_domain=None,
+):
     """
     Creates an enhanced comprehensive style profile from text samples or direct input.
     
@@ -61,6 +76,10 @@ def create_enhanced_style_profile(input_data, use_local=True, model_name=None, a
         api_type (str): 'openai' or 'gemini' for cloud APIs
         api_client: Pre-initialized API client (for OpenAI or Gemini)
         processing_mode (str): 'enhanced' for thorough analysis, 'statistical' for faster processing
+        analogy_augmentation (bool|None): Enable cognitive bridging / analogies.
+            None falls back to the global ANALOGY_AUGMENTATION_ENABLED setting.
+        analogy_domain (str|None): Analogy domain key (e.g. 'sports', 'gaming').
+            None falls back to DEFAULT_ANALOGY_DOMAIN.
         
     Returns:
         dict: Enhanced consolidated style profile with deep analysis
@@ -181,6 +200,32 @@ def create_enhanced_style_profile(input_data, use_local=True, model_name=None, a
     analysis_method = "Local Ollama" if use_local else f"Cloud API ({api_type})"
     model_used = model_name if use_local else f"{api_type.title()} API"
     
+    # ---- Cognitive Load / Analogy Engine (optional) ----
+    enable_analogies = (
+        analogy_augmentation
+        if analogy_augmentation is not None
+        else ANALOGY_AUGMENTATION_ENABLED
+    )
+    domain = analogy_domain or DEFAULT_ANALOGY_DOMAIN
+
+    # Always compute density (cheap, pure Python) so the profile includes it
+    print("Detecting conceptual density...")
+    density_report = detect_conceptual_density(combined_text)
+
+    analogy_result = None
+    if enable_analogies and density_report["high_density_count"] > 0:
+        print(f"Running Analogy Engine (domain: {domain}) on "
+              f"{density_report['high_density_count']} dense passage(s)...")
+        injector = AnalogyInjector(domain=domain)
+        analogy_result = injector.augment_analysis_result(
+            consolidated_analysis if isinstance(consolidated_analysis, str) else str(consolidated_analysis),
+            use_local=use_local,
+            model_name=model_name,
+            api_type=api_type,
+            api_client=api_client,
+        )
+        print(f"  Generated {analogy_result['analogy_count']} cognitive note(s).")
+
     # Build the complete style profile
     style_profile = {
         'profile_created': True,
@@ -190,6 +235,8 @@ def create_enhanced_style_profile(input_data, use_local=True, model_name=None, a
             'analysis_method': analysis_method,
             'model_used': model_used,
             'processing_mode': processing_mode,
+            'analogy_augmentation': enable_analogies,
+            'analogy_domain': domain if enable_analogies else None,
             'total_samples': len(all_analyses),
             'combined_text_length': len(combined_text),
             'file_info': file_info
@@ -197,10 +244,18 @@ def create_enhanced_style_profile(input_data, use_local=True, model_name=None, a
         'text_statistics': text_statistics,
         'readability_metrics': readability_metrics,
         'deep_stylometry': deep_stylometry,
+        'conceptual_density': density_report,
         'individual_analyses': all_analyses,
-        'consolidated_analysis': consolidated_analysis
+        'consolidated_analysis': consolidated_analysis,
     }
-    
+
+    if analogy_result:
+        style_profile['cognitive_bridging'] = {
+            'augmented_analysis': analogy_result.get('augmented_text', ''),
+            'analogies': analogy_result.get('analogies', []),
+            'analogy_count': analogy_result.get('analogy_count', 0),
+        }
+
     return style_profile
 
 
@@ -277,4 +332,22 @@ def display_enhanced_results(style_profile):
             top_fw_str = ", ".join(f"'{k}': {round(v*100, 1)}%" for k, v in top_fw if v > 0)
             print(f"Top function words: {top_fw_str}")
     
+    # ---- Conceptual Density & Cognitive Bridging ----
+    if 'conceptual_density' in style_profile:
+        cd = style_profile['conceptual_density']
+        print(f"\n--- Cognitive Load Optimization ---")
+        print(f"Overall conceptual density: {cd.get('overall_density', 0):.3f}")
+        print(f"High-density passages: {cd.get('high_density_count', 0)}")
+
+    if 'cognitive_bridging' in style_profile:
+        cb = style_profile['cognitive_bridging']
+        count = cb.get('analogy_count', 0)
+        print(f"\n--- Cognitive Bridging Notes ({count}) ---")
+        for i, item in enumerate(cb.get('analogies', []), 1):
+            preview = item['source_sentence'][:70]
+            if len(item['source_sentence']) > 70:
+                preview += "..."
+            print(f"  {i}. [{item['density_score']:.2f}] \"{preview}\"")
+            print(f"     Analogy: {item['analogy']}")
+
     print("\n" + "="*60)

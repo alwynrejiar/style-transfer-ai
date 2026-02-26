@@ -1,1 +1,1 @@
-"""Core stylometry analysis, prompts, and metrics calculation."""
+"""Core stylometry analysis, prompts, metrics calculation, and analogy engine."""

@@ -69,3 +69,50 @@ TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"
 # Menu Configuration
 MAIN_MENU_WIDTH = 60
 SUB_MENU_WIDTH = 40
+
+# ---------------------------------------------------------------------------
+# Analogy Engine / Cognitive Bridging Configuration
+# ---------------------------------------------------------------------------
+
+# Toggle analogy augmentation globally (can be overridden at request level)
+ANALOGY_AUGMENTATION_ENABLED = False
+
+# Supported analogy domains — each maps to a display label and a short
+# description used inside LLM prompts so the model picks relevant metaphors.
+ANALOGY_DOMAINS = {
+    "sports": {
+        "label": "Sports",
+        "description": "Use sports metaphors and athletic analogies (football, basketball, track & field, etc.)"
+    },
+    "gaming": {
+        "label": "Gaming",
+        "description": "Use video-game and board-game analogies (levels, power-ups, strategy, respawn, etc.)"
+    },
+    "cooking": {
+        "label": "Cooking",
+        "description": "Use culinary and kitchen-based analogies (recipes, ingredients, seasoning, baking, etc.)"
+    },
+    "nature": {
+        "label": "Nature",
+        "description": "Use nature and ecology analogies (ecosystems, weather, rivers, growth, seasons, etc.)"
+    },
+    "daily_life": {
+        "label": "Daily Life",
+        "description": "Use everyday household and routine analogies (commuting, shopping, organising, etc.)"
+    },
+    "tech": {
+        "label": "Tech",
+        "description": "Use technology and software analogies (apps, networks, debugging, upgrades, etc.)"
+    },
+    "general_simplification": {
+        "label": "General Simplification",
+        "description": "Simplify using the clearest everyday analogy regardless of domain"
+    },
+}
+
+DEFAULT_ANALOGY_DOMAIN = "general_simplification"
+
+# Conceptual density threshold — sentences scoring above this trigger analogies.
+# Range 0.0-1.0.  Higher = only the densest sentences get analogies.
+# Most academic/technical sentences score 0.45-0.70; casual text scores 0.25-0.40.
+CONCEPTUAL_DENSITY_THRESHOLD = 0.45

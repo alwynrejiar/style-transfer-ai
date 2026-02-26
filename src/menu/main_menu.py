@@ -6,9 +6,15 @@ Handles primary navigation and menu display.
 import sys
 import subprocess
 import os
-from ..config.settings import AVAILABLE_MODELS
+from ..config.settings import (
+    AVAILABLE_MODELS,
+    ANALOGY_DOMAINS,
+    DEFAULT_ANALOGY_DOMAIN,
+    CONCEPTUAL_DENSITY_THRESHOLD,
+)
 from ..analysis.analyzer import create_enhanced_style_profile
 from ..analysis.metrics import calculate_style_similarity, extract_deep_stylometry
+from ..analysis.analogy_engine import detect_conceptual_density, AnalogyInjector
 from ..storage.local_storage import list_local_profiles, load_local_profile, cleanup_old_reports, save_style_profile_locally
 from .model_selection import (
     select_model_interactive, 
@@ -57,8 +63,35 @@ def display_main_menu():
     print("11. Check Configuration")
     print("12. Launch GUI")
     print("13. Run Scripts (Utilities/Install)")
+    print("")
+    print("COGNITIVE LOAD OPTIMIZATION:")
+    print("14. Cognitive Bridging / Analogy Engine")
     print("0. Exit")
     print("="*60)
+
+
+def _ask_analogy_options():
+    """Prompt user for Cognitive Bridging / Analogy settings.
+
+    Returns (enable: bool, domain: str|None).
+    """
+    print("\n--- Cognitive Load Optimization ---")
+    toggle = input("Enable auto-inject contextual analogies? (y/n) [n]: ").strip().lower()
+    if toggle != 'y':
+        return False, None
+
+    print("\nSelect base domain for analogies:")
+    domains = list(ANALOGY_DOMAINS.items())
+    for i, (key, info) in enumerate(domains, 1):
+        print(f"  {i}. {info['label']}")
+    choice = input(f"Enter choice (1-{len(domains)}) [{len(domains)}]: ").strip()
+    try:
+        idx = int(choice) - 1
+        domain = domains[idx][0] if 0 <= idx < len(domains) else DEFAULT_ANALOGY_DOMAIN
+    except (ValueError, IndexError):
+        domain = DEFAULT_ANALOGY_DOMAIN
+    print(f"  Domain set to: {ANALOGY_DOMAINS[domain]['label']}")
+    return True, domain
 
 
 def handle_analyze_style(processing_mode='enhanced'):
@@ -83,6 +116,11 @@ def handle_analyze_style(processing_mode='enhanced'):
             print("No input provided. Analysis cancelled.")
             return
         
+        # Ask about analogy augmentation (only for enhanced mode)
+        analogy_enabled, analogy_domain = False, None
+        if processing_mode == 'enhanced':
+            analogy_enabled, analogy_domain = _ask_analogy_options()
+        
         # Prepare model parameters based on selection
         if model_info['use_local_model']:
             # Local Ollama model
@@ -90,7 +128,9 @@ def handle_analyze_style(processing_mode='enhanced'):
                 input_data, 
                 use_local=True, 
                 model_name=model_info['selected_model'], 
-                processing_mode=processing_mode
+                processing_mode=processing_mode,
+                analogy_augmentation=analogy_enabled,
+                analogy_domain=analogy_domain,
             )
         else:
             # Cloud API model
@@ -125,7 +165,9 @@ def handle_analyze_style(processing_mode='enhanced'):
                 use_local=False,
                 api_type=model_type,
                 api_client=api_client,
-                processing_mode=processing_mode
+                processing_mode=processing_mode,
+                analogy_augmentation=analogy_enabled,
+                analogy_domain=analogy_domain,
             )
         
         # Save the analysis results locally
@@ -1430,12 +1472,168 @@ def handle_style_comparison():
         print(f"\nError in style comparison: {e}")
 
 
+def handle_cognitive_bridging():
+    """Standalone Cognitive Bridging / Analogy Engine."""
+    try:
+        print("\n" + "="*60)
+        print("COGNITIVE BRIDGING / ANALOGY ENGINE")
+        print("="*60)
+        print("Educational analogy generation agent.")
+        print("Analyzes content for abstract or technical concepts and")
+        print("generates simple, accurate real-world analogies.")
+        print()
+        print("Rules:")
+        print("  - Preserves original meaning (no distortion)")
+        print("  - Concise & structured output")
+        print("  - Practical examples when helpful")
+        print("  - Supplements, never replaces, the original text")
+        print()
+
+        # --- Model ---
+        print("Select a model for analogy generation:")
+        select_model_interactive()
+        model_info = get_current_model_info()
+        if not model_info['has_model']:
+            print("No model selected. Returning.")
+            return
+
+        # --- Input ---
+        print("\nHow would you like to provide text?")
+        print("  1. Type / paste content")
+        print("  2. Load from file path")
+        choice = input("Choice (1/2): ").strip()
+        text = ""
+        if choice == "2":
+            path = input("File path: ").strip().strip('"').strip("'")
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    text = f.read()
+                print(f"Loaded {len(text)} characters from file.")
+            except Exception as e:
+                print(f"Cannot read file: {e}")
+                return
+        else:
+            print("Paste or type your text below.")
+            print("When finished, press Enter on an empty line:")
+            lines = []
+            while True:
+                try:
+                    line = input()
+                except EOFError:
+                    break
+                if line == "" and lines:
+                    break
+                lines.append(line)
+            text = "\n".join(lines)
+
+        if not text.strip():
+            print("No text provided.")
+            return
+
+        # --- Density analysis (instant, no LLM) ---
+        density = detect_conceptual_density(text)
+        print(f"\nOverall conceptual density: {density['overall_density']:.3f}")
+        print(f"High-density passages (>={CONCEPTUAL_DENSITY_THRESHOLD}): "
+              f"{density['high_density_count']}")
+
+        if density['high_density_count'] == 0:
+            print("\nNo passages exceed the density threshold — no analogies needed.")
+            input("\nPress Enter to continue...")
+            return
+
+        # --- Domain selection ---
+        print("\nSelect analogy domain:")
+        domains = list(ANALOGY_DOMAINS.items())
+        for i, (key, info) in enumerate(domains, 1):
+            print(f"  {i}. {info['label']}")
+        d_choice = input(f"Choice (1-{len(domains)}) [{len(domains)}]: ").strip()
+        try:
+            d_idx = int(d_choice) - 1
+            domain = domains[d_idx][0] if 0 <= d_idx < len(domains) else DEFAULT_ANALOGY_DOMAIN
+        except (ValueError, IndexError):
+            domain = DEFAULT_ANALOGY_DOMAIN
+
+        # --- Generate analogies ---
+        print(f"\nGenerating analogies (domain: {ANALOGY_DOMAINS[domain]['label']})...")
+        print("This may take 30-60 seconds while the model processes...")
+        injector = AnalogyInjector(domain=domain)
+
+        if model_info['use_local_model']:
+            result = injector.augment_text(
+                text,
+                use_local=True,
+                model_name=model_info['selected_model'],
+            )
+        else:
+            # Cloud API setup
+            api_type, api_client = None, None
+            if 'gpt' in model_info['selected_model'].lower():
+                api_type = 'openai'
+                client, msg = setup_openai_client(model_info['user_chosen_api_key'])
+                api_client = client
+            elif 'gemini' in model_info['selected_model'].lower():
+                api_type = 'gemini'
+                client, msg = setup_gemini_client()
+                api_client = client
+            if not api_client:
+                print("Failed to initialise API client.")
+                return
+            result = injector.augment_text(
+                text,
+                use_local=False,
+                api_type=api_type,
+                api_client=api_client,
+            )
+
+        # --- Display ---
+        print(f"\nGenerated {result['analogy_count']} cognitive note(s).")
+        if result['analogy_count'] > 0:
+            # Show structured analogy breakdown first
+            print("\n" + "="*60)
+            print("ANALOGY BREAKDOWN")
+            print("="*60)
+            for i, item in enumerate(result.get('analogies', []), 1):
+                print(f"\n  {i}. Original passage (density {item['density_score']:.2f}):")
+                preview = item['source_sentence'][:100]
+                if len(item['source_sentence']) > 100:
+                    preview += "..."
+                print(f"     \"{preview}\"")
+                if item.get('concept'):
+                    print(f"     Concept:  {item['concept']}")
+                print(f"     Analogy:  {item['analogy']}")
+                if item.get('example'):
+                    print(f"     Example:  {item['example']}")
+            print()
+
+            # Then show full augmented text
+            print("="*60)
+            print("AUGMENTED TEXT (original + cognitive notes)")
+            print("="*60)
+            print(result['augmented_text'])
+            print("="*60)
+        else:
+            print("\nThe model returned a response but no analogies could be")
+            print("parsed. This can happen with very short text or if the")
+            print("model output was in an unexpected format.")
+            print(f"\nDense passages found: {result['density_report']['high_density_count']}")
+
+        reset_model_selection()
+        input("\nPress Enter to continue...")
+
+    except KeyboardInterrupt:
+        print("\n\nReturning to main menu...")
+        reset_model_selection()
+    except Exception as e:
+        print(f"\nError in cognitive bridging: {e}")
+        reset_model_selection()
+
+
 def run_main_menu():
     """Run the main menu loop."""
     while True:
         try:
             display_main_menu()
-            choice = input("\nEnter your choice (0-13): ").strip()
+            choice = input("\nEnter your choice (0-14): ").strip()
             
             if choice == "0":
                 print("\nThank you for using Style Transfer AI!")
@@ -1481,9 +1679,12 @@ def run_main_menu():
 
             elif choice == "13":
                 handle_run_scripts()
+
+            elif choice == "14":
+                handle_cognitive_bridging()
                 
             else:
-                print("Invalid choice. Please enter 0-13.")
+                print("Invalid choice. Please enter 0-14.")
                 
         except KeyboardInterrupt:
             print("\n\nExiting Style Transfer AI...")

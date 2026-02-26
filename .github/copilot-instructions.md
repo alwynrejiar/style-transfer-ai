@@ -1,110 +1,102 @@
 # GitHub Copilot Instructions - Style Transfer AI
 
-## Project Overview
-**Style Transfer AI** is an advanced stylometry analysis system that extracts deep linguistic patterns from writing samples to create comprehensive style profiles. The system supports tri-model architecture (local Ollama + OpenAI API) with privacy-first local processing capabilities.
+## Architecture Overview
 
-## Architecture & Key Components
+Modular Python package (`src/`) with three interfaces: interactive CLI, Streamlit web GUI, and a desktop CustomTkinter GUI.
 
-### Tri-Model System
-- **Local Ollama Models**: `gpt-oss:20b` (advanced) and `gemma3:1b` (fast) via HTTP API
-- **OpenAI API**: GPT-3.5-turbo fallback with flexible key management
-- **Model Selection**: Interactive CLI choice system with connection validation
+### Entry Points
+- **CLI**: `python scripts/run.py` → `src.main:cli_entry_point` → `src/menu/main_menu.py:run_main_menu()`
+- **Streamlit GUI**: `streamlit run app.py` → sidebar routing to `gui/*.py` page modules (each exposes `show()`)
+- **Desktop GUI**: `python scripts/run_gui.py` → CustomTkinter app in `src/gui/app.py`
+- **PyPI console script**: `style-transfer-ai` (after `pip install style-transfer-ai`)
 
-### Core Analysis Pipeline
-1. **Text Ingestion**: Multi-file processing with UTF-8 encoding fallback to latin-1
-2. **Statistical Analysis**: Word frequencies, punctuation patterns, lexical diversity calculations
-3. **Readability Metrics**: Flesch scores, Coleman-Liau index, syllable counting algorithms
-4. **Deep Stylometry**: 25-point linguistic analysis framework via structured LLM prompts
-5. **Dual Output**: JSON (machine-readable) + TXT (human-readable) with timestamps
+### Module Layout (`src/`)
+| Module | Purpose | Key exports |
+|---|---|---|
+| `config/settings.py` | All constants: `AVAILABLE_MODELS`, `PROCESSING_MODES`, API URLs, file paths | Import constants here; never hardcode |
+| `models/` | One client per provider: `ollama_client.py`, `openai_client.py`, `gemini_client.py` | `analyze_with_*()`, `setup_*_client()` |
+| `analysis/` | `analyzer.py` (orchestrator), `prompts.py` (25-point prompt), `metrics.py` (readability + Burrows' Delta), `analogy_engine.py` (cognitive bridging) | `analyze_style()`, `create_enhanced_style_profile()`, `detect_conceptual_density()`, `AnalogyInjector` |
+| `generation/` | `ContentGenerator`, `StyleTransfer`, `QualityController`, `GenerationTemplates` | `generate_content()`, `transfer_style()`, `compare_styles()` |
+| `storage/local_storage.py` | Dual-format save (JSON + TXT) with personalized filenames | `save_style_profile_locally()` |
+| `menu/` | `main_menu.py` (~1600 lines, 14 menu options), `model_selection.py` (global state), `navigation.py` (UI helpers) | `run_main_menu()` |
+| `utils/` | `text_processing.py` (file I/O, sanitization), `formatters.py` (report output), `user_profile.py` | Shared helpers |
+| `gui/app.py` | Desktop CustomTkinter app: analyze, cognitive bridging, transfer, profiles, settings | `StyleTransferApp` |
 
-### Key File: `style_analyzer_enhanced.py`
-- **Main entry point**: Interactive model selection and analysis workflow
-- **Global state**: `USE_LOCAL_MODEL`, `SELECTED_MODEL`, `USER_CHOSEN_API_KEY`
-- **API patterns**: Ollama HTTP requests to `localhost:11434/api/generate` with model-specific parameters
+### Data Flow
+```
+User Input → model_selection (global state) → analyzer.analyze_style()
+  → prompts.create_enhanced_deep_prompt() → models/*_client.analyze_with_*()
+  → metrics (readability, Burrows' Delta) → storage.save_style_profile_locally()
+  → dual output: JSON + TXT in "stylometry fingerprints/"
 
-## Critical Development Patterns
+# Optional cognitive bridging layer:
+analyzer.create_enhanced_style_profile(analogy_augmentation=True)
+  → analogy_engine.detect_conceptual_density() → AnalogyInjector.augment_analysis_result()
+  → [Cognitive Note: …] blocks appended to output
+```
 
-### Model Communication
+## Model Integration Patterns
+
+Four models in `AVAILABLE_MODELS` with types `ollama`, `openai`, `gemini`. Uniform call pattern:
+
 ```python
-# Ollama payload structure - adjust num_predict by model size
-payload = {
-    "model": model_name,
-    "prompt": prompt,
-    "stream": False,
-    "options": {
-        "temperature": 0.2,  # Lower for consistent analysis
-        "num_predict": 3000 if "gpt-oss" in model_name else 2000,
-        "timeout": 180  # Extended for deep analysis
-    }
-}
+# Every model client: analyze_with_*(prompt, ...) → str
+# Ollama:  requests.post("http://localhost:11434/api/generate", json=payload)
+# OpenAI:  client.chat.completions.create(model="gpt-3.5-turbo", ...)
+# Gemini:  model.generate_content(prompt, generation_config=...)
 ```
 
-### Error Handling Strategy
-- **Connection failures**: Graceful fallback from local to API models
-- **Timeout handling**: Model-specific timeout values (180s for deep analysis)
-- **File encoding**: UTF-8 with latin-1 fallback for text reading
-- **API key validation**: Length checks and interactive replacement
+**Global model state** in `src/menu/model_selection.py`: module-level `USE_LOCAL_MODEL`, `SELECTED_MODEL`, `USER_CHOSEN_API_KEY`. Reset via `reset_model_selection()`.
 
-### Output File Naming
-- **JSON**: `user_style_profile_enhanced_TIMESTAMP.json`
-- **TXT**: `user_style_profile_enhanced_TIMESTAMP.txt`
-- **Timestamp format**: `%Y%m%d_%H%M%S` for chronological sorting
+**Adding a new model**: (1) Add to `AVAILABLE_MODELS` in `settings.py`, (2) create/update client in `src/models/`, (3) add `elif` in `analyzer.analyze_style()` and `model_selection.validate_model_selection()`.
 
-## Stylometry Analysis Framework
+## Key Conventions
 
-### 25-Point Analysis Structure
-The system uses structured prompts divided into 7 categories:
-1. **Linguistic Architecture** (4 points): Sentence structure, clause patterns, punctuation, syntax
-2. **Lexical Intelligence** (4 points): Vocabulary sophistication, semantic fields, diversity metrics
-3. **Stylistic DNA** (4 points): Tone architecture, voice consistency, rhetorical devices
-4. **Cognitive Patterns** (4 points): Logical flow, transitions, emphasis techniques
-5. **Psychological Markers** (4 points): Processing style, emotional intelligence, authority positioning
-6. **Structural Genius** (4 points): Paragraph architecture, coherence, temporal dynamics
-7. **Unique Fingerprint** (1 point): Personal signature elements
+- **File encoding**: Use `read_text_file()` from `src/utils/text_processing.py` — tries UTF-8 then latin-1
+- **Output filenames**: `{name}_stylometric_profile_{YYYYMMDD_HHMMSS}.json/.txt`
+- **Dual output**: Every analysis saves both JSON and TXT via `save_dual_format()`
+- **API keys**: Placeholder strings `"your-openai-api-key-here"` in committed code; entered interactively at runtime
+- **Circular import avoidance**: `src/__init__.py` has empty `__all__`; model clients are imported lazily inside `analyzer.analyze_style()`
+- **Menu handlers**: Each CLI feature is a `handle_*()` function in `main_menu.py`, dispatched by `run_main_menu()`
+- **Analogy engine**: Opt-in per request via `analogy_augmentation` param; global default in `ANALOGY_AUGMENTATION_ENABLED`. Analogies are always rendered as `[Cognitive Note: …]` blocks to preserve primary output
+- **Desktop GUI**: `src/gui/app.py` provides a full CustomTkinter interface with threaded LLM calls; import via `from src.gui.app import StyleTransferApp`
 
-### Statistical Metrics Implementation
-- **Lexical diversity**: `unique_words / total_words`
-- **Readability scores**: Flesch Reading Ease, Flesch-Kincaid Grade Level, Coleman-Liau Index
-- **Syllable counting**: Vowel pattern algorithm with silent 'e' handling
-- **Punctuation analysis**: Counter-based frequency tracking
+## Running & Testing
 
-## Development Workflow
-
-### Prerequisites Setup
 ```bash
-# Ollama installation and model pulling
-ollama pull gpt-oss:20b
-ollama pull gemma3:1b
-ollama serve
+# Core dependencies
+pip install requests spacy streamlit plotly
+python -m spacy download en_core_web_sm
 
-# Python dependencies
-pip install requests openai
+# Optional providers
+pip install openai                    # OpenAI
+pip install google-generativeai       # Gemini
+
+# Local models (privacy-first default)
+ollama serve
+ollama pull gemma3:1b                 # fast
+ollama pull gpt-oss:20b              # advanced
+
+# Launch
+python scripts/run.py                 # CLI
+streamlit run app.py                  # Streamlit GUI
+python scripts/run_gui.py             # Desktop GUI (needs customtkinter matplotlib pillow)
+
+# Tests (import-validation scripts, not pytest)
+python tests/test_modular_implementation.py
+python tests/test_integration_complete.py
+python tests/test_analogy_engine.py
 ```
 
-### Testing Workflow
-- **Sample files**: `about_my_pet.txt`, `about_my_pet_1.txt` in project root
-- **Interactive testing**: Run `python style_analyzer_enhanced.py` for full workflow
-- **Model validation**: Check Ollama connection before analysis starts
+Sample texts: `data/samples/`. Generated profiles: `stylometry fingerprints/`.
 
-### Security Considerations
-- **API keys**: Use placeholder `"your-openai-api-key-here"` in code
-- **Environment variables**: Reference `.env.example` for production setup
-- **Local processing**: Default to Ollama models for privacy-sensitive content
+## Critical Details
 
-## Code Modification Guidelines
-
-### Adding New Models
-1. Update `AVAILABLE_MODELS` dictionary with model name and description
-2. Adjust `num_predict` parameters based on model capabilities
-3. Test connection validation in `check_ollama_connection()`
-
-### Extending Analysis Framework
-- **Prompt modification**: Update `create_enhanced_deep_prompt()` with new analysis dimensions
-- **Output processing**: Extend `format_human_readable_output()` for new metrics
-- **Statistical functions**: Add new metric calculations to `analyze_text_statistics()`
-
-### File Processing Extensions
-- **New input formats**: Extend `read_text_file()` with additional encoding support
-- **Batch processing**: Modify file path handling in `create_enhanced_style_profile()`
-
-When working on this codebase, prioritize local model usage for privacy, maintain the dual-output format pattern, and ensure all new features support the tri-model architecture.
+- **`main_menu.py` is ~1600 lines** — all 14 CLI features as `handle_*()` functions (option 14 = Cognitive Bridging)
+- **`analogy_engine.py`** — `detect_conceptual_density()` is pure Python (no LLM); `AnalogyInjector` batches dense sentences into a single LLM call
+- **`metrics.py` auto-installs spaCy** at runtime via `_ensure_spacy_model()` if missing
+- **Processing modes**: `"enhanced"` (25-point, temp 0.2, 180s) vs `"statistical"` (basic, temp 0.3, 120s) in `PROCESSING_MODES`
+- **Ollama tokens**: `num_predict` = 3000 for `gpt-oss` models, 2000 for others (in `ollama_client.py`)
+- **Analogy domains**: 7 built-in domains in `ANALOGY_DOMAINS` (sports, gaming, cooking, nature, daily_life, tech, general_simplification); default = `general_simplification`
+- **Conceptual density threshold**: `CONCEPTUAL_DENSITY_THRESHOLD = 0.45` (0-1 range; most academic text scores 0.45-0.70)
+- **PyInstaller**: `scripts/run.py` and `run_gui.py` detect `sys.frozen` and use `sys._MEIPASS` for bundled paths

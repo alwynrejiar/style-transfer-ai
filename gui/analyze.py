@@ -7,7 +7,9 @@ import os
 # Import backend logic
 # Assuming src is in path from app.py
 from src.analysis.analyzer import analyze_style
+from src.analysis.analogy_engine import detect_conceptual_density, AnalogyInjector
 from src.utils.text_processing import extract_basic_stats
+from src.config.settings import ANALOGY_DOMAINS, DEFAULT_ANALOGY_DOMAIN
 
 def show():
     st.title("🔍 Analyze Style")
@@ -41,6 +43,23 @@ def show():
             model_name = st.text_input("Model Name", value="gemma3:1b")
         else:
             model_name = st.text_input("Model Name", value="gpt-4", disabled=True)
+
+    # --- Cognitive Load Optimization ---
+    st.subheader("3. Cognitive Load Optimization")
+    analogy_enabled = st.toggle("Auto-Inject Contextual Analogies", value=False)
+    domain_labels = {k: v["label"] for k, v in ANALOGY_DOMAINS.items()}
+    analogy_domain = DEFAULT_ANALOGY_DOMAIN
+    if analogy_enabled:
+        selected_label = st.selectbox(
+            "Base Domain",
+            list(domain_labels.values()),
+            index=list(domain_labels.keys()).index(DEFAULT_ANALOGY_DOMAIN),
+        )
+        # Reverse-lookup key from label
+        analogy_domain = next(
+            (k for k, v in domain_labels.items() if v == selected_label),
+            DEFAULT_ANALOGY_DOMAIN,
+        )
 
     # Analyze Button
     if st.button("🚀 Analyze Text", type="primary"):
@@ -92,6 +111,34 @@ def show():
                 elif isinstance(result, dict):
                     # If it returns a dict, we can visualize it better
                     st.json(result)
+
+                # --- Cognitive Load / Analogy Engine ---
+                density = detect_conceptual_density(text_to_analyze)
+                st.markdown("### 🧠 Cognitive Load Optimization")
+                col_d1, col_d2 = st.columns(2)
+                col_d1.metric("Overall Density", f"{density['overall_density']:.3f}")
+                col_d2.metric("Dense Passages", density['high_density_count'])
+
+                if analogy_enabled and density['high_density_count'] > 0:
+                    with st.spinner("Generating contextual analogies..."):
+                        injector = AnalogyInjector(domain=analogy_domain)
+                        analogy_result = injector.augment_text(
+                            text_to_analyze,
+                            use_local=("Local" in model_type),
+                            model_name=model_name if "Local" in model_type else None,
+                        )
+                    if analogy_result['analogy_count'] > 0:
+                        st.markdown("#### 🌉 Cognitive Bridging Notes")
+                        for i, item in enumerate(analogy_result.get('analogies', []), 1):
+                            with st.expander(
+                                f"Note {i} — density {item['density_score']:.2f}"
+                            ):
+                                st.caption(f"**Dense passage:** {item['source_sentence']}")
+                                st.info(f"💡 {item['analogy']}")
+                    else:
+                        st.info("No analogies generated — text is already accessible.")
+                elif analogy_enabled:
+                    st.info("No passages exceed the density threshold — no analogies needed.")
                 
                 # Download Report
                 st.download_button(

@@ -8,7 +8,7 @@ import os
 import traceback
 
 # Add the project root to the path
-project_root = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 def test_imports():
@@ -187,9 +187,13 @@ def test_entry_points():
     # Test run.py compatibility
     try:
         # Check if run.py exists and can be imported
-        if os.path.exists('run.py'):
+        run_py_path = os.path.join(project_root, 'scripts', 'run.py')
+        if not os.path.exists(run_py_path):
+            # fallback: legacy location at repo root
+            run_py_path = os.path.join(project_root, 'run.py')
+        if os.path.exists(run_py_path):
             # Read the file to check it references the new structure
-            with open('run.py', 'r') as f:
+            with open(run_py_path, 'r') as f:
                 content = f.read()
                 if 'src.main' in content:
                     print("✓ run.py updated for modular structure")
