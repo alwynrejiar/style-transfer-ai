@@ -40,19 +40,18 @@
     var ctx = canvas.getContext('2d');
     var home = document.getElementById('home');
     var particles = [];
-    var count = 50;
+    var count = 70;
 
     function resize() {
-        var w = home.clientWidth;
-        var h = home.clientHeight;
+        var rect = home.getBoundingClientRect();
+        var w = rect.width;
+        var h = rect.height;
         canvas.width = w;
         canvas.height = h;
         canvas.style.width = w + 'px';
         canvas.style.height = h + 'px';
+        initParticlePositions();
     }
-    // delay first resize to ensure layout is settled
-    setTimeout(resize, 100);
-    window.addEventListener('resize', resize);
 
     function initParticlePositions() {
         particles = [];
@@ -67,7 +66,12 @@
             });
         }
     }
-    initParticlePositions();
+
+    // resize once DOM is ready, again after fonts/images settle
+    resize();
+    setTimeout(resize, 300);
+    setTimeout(resize, 1000);
+    window.addEventListener('resize', resize);
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);

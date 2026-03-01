@@ -244,6 +244,7 @@ h2 {
     padding-bottom: 40px;
     background: var(--white);
     position: relative;
+    overflow: hidden;
 }
 
 /* floating particles canvas */
