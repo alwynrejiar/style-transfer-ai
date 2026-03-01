@@ -232,6 +232,7 @@ h2 {
     height: 100%;
     z-index: 0;
     pointer-events: none;
+    display: block;
 }
 
 .bg-char {
@@ -1300,7 +1301,9 @@ html[data-anim-ready] [data-anim].shown {
     }
 
     .nav-links {
-        display: none !important;
+        visibility: hidden;
+        opacity: 0;
+        pointer-events: none;
         position: fixed;
         top: var(--nav-h);
         left: 0;
@@ -1308,17 +1311,20 @@ html[data-anim-ready] [data-anim].shown {
         bottom: 0;
         background: rgba(255, 255, 255, 0.98);
         backdrop-filter: blur(20px);
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: flex-start !important;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
         padding-top: 48px;
-        gap: 4px !important;
+        gap: 4px;
         z-index: 9999;
         overflow-y: auto;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
     }
 
     .nav-links.open {
-        display: flex !important;
+        visibility: visible;
+        opacity: 1;
+        pointer-events: auto;
     }
 
     .nav-links li {
@@ -1332,19 +1338,24 @@ html[data-anim-ready] [data-anim].shown {
         padding: 16px 24px;
         display: block;
         width: 100%;
-        color: var(--ink);
-        border-radius: 0;
+        color: var(--ink) !important;
+        background: transparent !important;
+        border-radius: 0 !important;
     }
 
     .nav-links a:hover,
     .nav-links a.active {
-        background: var(--off);
+        background: var(--off) !important;
     }
 
-    .nav-cta {
+    .nav-links .nav-cta {
         margin-top: 12px;
+        background: var(--ink) !important;
+        color: var(--white) !important;
         width: auto !important;
         display: inline-block !important;
+        border-radius: 7px !important;
+        text-align: center;
     }
 
     section {
@@ -1440,7 +1451,19 @@ html[data-anim-ready] [data-anim].shown {
     }
 
     .bg-char {
-        display: none;
+        opacity: 0.3;
+    }
+
+    .bg-char-1 {
+        font-size: 40vw;
+        top: 0;
+        right: -5%;
+    }
+
+    .bg-char-2 {
+        font-size: 25vw;
+        bottom: 5%;
+        left: -3%;
     }
 
     .hero-l1 {
@@ -1448,7 +1471,11 @@ html[data-anim-ready] [data-anim].shown {
     }
 
     .hero-l2 {
-        font-size: clamp(2.2rem, 10vw, 3.2rem);
+        font-size: clamp(2.2rem, 9vw, 3.2rem);
+    }
+
+    .hero-title {
+        padding-right: 4px;
     }
 
     .hero-desc {

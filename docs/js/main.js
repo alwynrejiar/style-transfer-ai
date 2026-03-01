@@ -36,13 +36,18 @@
     var ctx = canvas.getContext('2d');
     var home = document.getElementById('home');
     var particles = [];
-    var count = 40;
+    var count = 50;
 
     function resize() {
-        canvas.width = home.offsetWidth;
-        canvas.height = home.offsetHeight;
+        var w = home.clientWidth;
+        var h = home.clientHeight;
+        canvas.width = w;
+        canvas.height = h;
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
     }
-    resize();
+    // delay first resize to ensure layout is settled
+    setTimeout(resize, 100);
     window.addEventListener('resize', resize);
 
     function initParticlePositions() {
