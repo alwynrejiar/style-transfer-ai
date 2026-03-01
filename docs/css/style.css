@@ -88,7 +88,7 @@ nav {
     background: rgba(255, 255, 255, 0.93);
     backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--stone);
-    z-index: 100;
+    z-index: 1000;
 }
 
 .logo {
@@ -99,10 +99,18 @@ nav {
     text-decoration: none;
 }
 
+/* Desktop: nav-links sits inside the visual nav bar area */
 .nav-links {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: var(--nav-h);
     display: flex;
+    align-items: center;
     gap: 2px;
     list-style: none;
+    padding-right: 56px;
+    z-index: 1001;
 }
 
 .nav-links a {
@@ -1301,14 +1309,13 @@ html[data-anim-ready] [data-anim].shown {
     }
 
     .nav-links {
-        visibility: hidden;
-        opacity: 0;
-        pointer-events: none;
         position: fixed;
         top: var(--nav-h);
         left: 0;
         right: 0;
         bottom: 0;
+        height: auto;
+        padding-right: 0;
         background: rgba(255, 255, 255, 0.98);
         backdrop-filter: blur(20px);
         flex-direction: column;
@@ -1316,8 +1323,11 @@ html[data-anim-ready] [data-anim].shown {
         justify-content: flex-start;
         padding-top: 48px;
         gap: 4px;
-        z-index: 9999;
+        z-index: 10000;
         overflow-y: auto;
+        visibility: hidden;
+        opacity: 0;
+        pointer-events: none;
         transition: opacity 0.3s ease, visibility 0.3s ease;
     }
 
@@ -1471,11 +1481,12 @@ html[data-anim-ready] [data-anim].shown {
     }
 
     .hero-l2 {
-        font-size: clamp(2.2rem, 9vw, 3.2rem);
+        font-size: clamp(2rem, 8.5vw, 3rem);
     }
 
     .hero-title {
-        padding-right: 4px;
+        padding-right: 8px;
+        overflow: visible;
     }
 
     .hero-desc {
