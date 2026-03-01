@@ -1452,6 +1452,11 @@ html[data-anim-ready] [data-anim].shown {
         gap: 16px;
     }
 
+    .feat-header .lead {
+        max-width: 100% !important;
+        text-align: left !important;
+    }
+
     .team-grid {
         grid-template-columns: repeat(2, 1fr);
     }
