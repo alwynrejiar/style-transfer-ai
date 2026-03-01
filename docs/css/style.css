@@ -38,27 +38,42 @@ body.menu-open {
 }
 
 /* ── CUSTOM CURSOR ── */
+@media (pointer: fine) {
+    body {
+        cursor: none;
+    }
+
+    a, button, input, textarea, select, .btn, .play-btn, .team-card, .feat, .step-node {
+        cursor: none;
+    }
+}
+
 .cursor {
     position: fixed;
+    left: -20px;
+    top: -20px;
     width: 8px;
     height: 8px;
     background: var(--ink);
     border-radius: 50%;
     pointer-events: none;
-    z-index: 9999;
+    z-index: 99999;
     transform: translate(-50%, -50%);
     transition: width .2s, height .2s;
 }
 
 .cursor-ring {
     position: fixed;
+    left: -40px;
+    top: -40px;
     width: 36px;
     height: 36px;
     border: 1px solid rgba(26, 25, 22, 0.2);
     border-radius: 50%;
     pointer-events: none;
-    z-index: 9998;
+    z-index: 99998;
     transform: translate(-50%, -50%);
+    transition: width .25s, height .25s, border-color .25s;
 }
 
 body.hov .cursor {
