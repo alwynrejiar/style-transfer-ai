@@ -126,15 +126,19 @@ def format_human_readable_output(style_profile):
         output_lines.append("INDIVIDUAL FILE ANALYSES")
         output_lines.append("=" * 50)
         for i, analysis in enumerate(style_profile['individual_analyses'], 1):
-            output_lines.append(f"\nFILE {i}: {analysis['filename']}")
-            output_lines.append("-" * (10 + len(analysis['filename'])))
-            output_lines.append(f"Character Count: {analysis['character_count']}")
-            output_lines.append(f"Word Count: {analysis['word_count']}")
+            output_lines.append(f"\nFILE {i}: {analysis.get('filename', 'unknown')}")
+            output_lines.append("-" * (10 + len(analysis.get('filename', 'unknown'))))
+            if 'character_count' in analysis:
+                output_lines.append(f"Character Count: {analysis['character_count']}")
+            if 'word_count' in analysis:
+                output_lines.append(f"Word Count: {analysis['word_count']}")
             output_lines.append("")
             output_lines.append("STYLOMETRIC ANALYSIS:")
-            # Add the analysis content with proper formatting
-            analysis_lines = analysis['analysis'].split('\n')
-            for line in analysis_lines:
+            # Handle both string (legacy) and dict (v3.0) analysis formats
+            raw = analysis.get('analysis', '')
+            if isinstance(raw, dict):
+                raw = json.dumps(raw, indent=2, ensure_ascii=False)
+            for line in raw.split('\n'):
                 if line.strip():
                     output_lines.append(f"  {line}")
             output_lines.append("")
@@ -143,9 +147,11 @@ def format_human_readable_output(style_profile):
     if 'consolidated_analysis' in style_profile:
         output_lines.append("CONSOLIDATED STYLOMETRIC PROFILE")
         output_lines.append("=" * 50)
-        # Add the consolidated analysis content with proper formatting
-        analysis_lines = style_profile['consolidated_analysis'].split('\n')
-        for line in analysis_lines:
+        # Handle both string (legacy) and dict (v3.0) analysis formats
+        consolidated = style_profile['consolidated_analysis']
+        if isinstance(consolidated, dict):
+            consolidated = json.dumps(consolidated, indent=2, ensure_ascii=False)
+        for line in consolidated.split('\n'):
             if line.strip():
                 output_lines.append(line)
         output_lines.append("")
