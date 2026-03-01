@@ -989,6 +989,12 @@ h2 {
     margin-bottom: 56px;
 }
 
+.team-lead {
+    max-width: 240px;
+    text-align: right;
+    font-size: 0.85rem;
+}
+
 .team-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -1473,6 +1479,11 @@ html[data-anim-ready] [data-anim].shown {
         flex-direction: column;
         align-items: flex-start;
         gap: 16px;
+    }
+
+    .team-lead {
+        max-width: 100%;
+        text-align: left;
     }
 
     .contact-grid {
