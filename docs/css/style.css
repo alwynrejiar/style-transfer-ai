@@ -1563,10 +1563,19 @@ html[data-anim-ready] [data-anim].shown {
         gap: 12px;
         max-width: 100%;
         margin-bottom: 12px;
+        background: none;
+        border: none;
+        border-radius: 0;
+        overflow: visible;
     }
 
     .feat-grid:last-child {
         margin-bottom: 0;
+    }
+
+    .feat {
+        border: 1px solid var(--stone);
+        border-radius: 14px;
     }
 
     .video-frame {
