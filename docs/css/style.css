@@ -137,7 +137,7 @@ nav {
 
 /* ── SECTIONS ── */
 section {
-    padding: calc(var(--nav-h) + 100px) 56px 120px;
+    padding: calc(var(--nav-h) + 60px) 56px 80px;
     scroll-margin-top: var(--nav-h);
 }
 
@@ -218,6 +218,7 @@ h2 {
     flex-direction: column;
     justify-content: center;
     padding-top: var(--nav-h);
+    padding-bottom: 60px;
     background: var(--white);
     position: relative;
     overflow: hidden;
