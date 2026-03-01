@@ -1311,17 +1311,38 @@ html[data-anim-ready] [data-anim].shown {
         justify-content: flex-start;
         padding-top: 48px;
         gap: 4px;
-        z-index: 150;
+        z-index: 999;
         overflow-y: auto;
     }
 
     .nav-links.open {
-        display: flex;
+        display: flex !important;
+    }
+
+    .nav-links li {
+        list-style: none;
+        width: 100%;
+        text-align: center;
     }
 
     .nav-links a {
         font-size: 1.1rem;
-        padding: 14px 24px;
+        padding: 16px 24px;
+        display: block;
+        width: 100%;
+        color: var(--ink);
+        border-radius: 0;
+    }
+
+    .nav-links a:hover,
+    .nav-links a.active {
+        background: var(--off);
+    }
+
+    .nav-cta {
+        margin-top: 12px;
+        width: auto !important;
+        display: inline-block !important;
     }
 
     section {
