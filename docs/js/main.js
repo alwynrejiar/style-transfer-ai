@@ -245,24 +245,16 @@
     var navLinks = document.getElementById('navLinks');
     if (!hamburger || !navLinks) return;
 
-    var scrollPos = 0;
-
     function openMenu() {
-        scrollPos = window.scrollY;
         hamburger.classList.add('active');
         navLinks.classList.add('open');
         document.body.classList.add('menu-open');
-        document.body.style.top = -scrollPos + 'px';
     }
 
-    function closeMenu(skipRestore) {
+    function closeMenu() {
         hamburger.classList.remove('active');
         navLinks.classList.remove('open');
         document.body.classList.remove('menu-open');
-        document.body.style.top = '';
-        if (!skipRestore) {
-            window.scrollTo(0, scrollPos);
-        }
     }
 
     hamburger.addEventListener('click', function () {
@@ -277,22 +269,14 @@
         link.addEventListener('click', function (e) {
             e.preventDefault();
             var href = this.getAttribute('href');
-            // close menu without restoring scroll position
-            closeMenu(true);
-            // restore scroll first, then smoothly navigate
-            window.scrollTo(0, scrollPos);
-            // small delay to let body position reset before scrolling
-            setTimeout(function () {
-                var target = document.querySelector(href);
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth' });
-                }
-                // update active state
-                navLinks.querySelectorAll('a').forEach(function (l) { l.classList.remove('active'); });
-                var clicked = navLinks.querySelector('a[href="' + href + '"]');
-                if (clicked) clicked.classList.add('active');
-            }, 50);
+            closeMenu();
+            var target = document.querySelector(href);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth' });
+            }
+            // update active state
+            navLinks.querySelectorAll('a').forEach(function (l) { l.classList.remove('active'); });
+            this.classList.add('active');
         });
     });
-})();
 })();
