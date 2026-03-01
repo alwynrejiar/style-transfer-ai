@@ -34,26 +34,31 @@
     var canvas = document.getElementById('heroParticles');
     if (!canvas) return;
     var ctx = canvas.getContext('2d');
+    var home = document.getElementById('home');
     var particles = [];
-    var count = 35;
+    var count = 40;
 
     function resize() {
-        canvas.width = canvas.offsetWidth;
-        canvas.height = canvas.offsetHeight;
+        canvas.width = home.offsetWidth;
+        canvas.height = home.offsetHeight;
     }
     resize();
     window.addEventListener('resize', resize);
 
-    for (var i = 0; i < count; i++) {
-        particles.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            r: Math.random() * 2 + 0.5,
-            dx: (Math.random() - 0.5) * 0.4,
-            dy: (Math.random() - 0.5) * 0.4,
-            opacity: Math.random() * 0.18 + 0.04
-        });
+    function initParticlePositions() {
+        particles = [];
+        for (var i = 0; i < count; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                r: Math.random() * 2.5 + 0.5,
+                dx: (Math.random() - 0.5) * 0.5,
+                dy: (Math.random() - 0.5) * 0.5,
+                opacity: Math.random() * 0.15 + 0.03
+            });
+        }
     }
+    initParticlePositions();
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
