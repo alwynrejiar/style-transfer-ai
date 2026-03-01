@@ -23,7 +23,7 @@ html {
 }
 
 body {
-    font-family: 'Geist', sans-serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-weight: 400;
     background: var(--white);
     color: var(--ink);
@@ -105,8 +105,9 @@ nav {
 }
 
 .logo {
-    font-family: 'Instrument Serif', serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 1.25rem;
+    font-weight: 600;
     letter-spacing: -0.02em;
     color: var(--ink);
     text-decoration: none;
@@ -181,8 +182,8 @@ section {
 }
 
 h2 {
-    font-family: 'Instrument Serif', serif;
-    font-weight: 400;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-weight: 600;
     letter-spacing: -0.03em;
     line-height: 1.08;
     color: var(--ink);
@@ -198,7 +199,7 @@ h2 {
 
 /* ── BUTTONS ── */
 .btn {
-    font-family: 'Geist', sans-serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 0.82rem;
     font-weight: 500;
     padding: 11px 24px;
@@ -651,8 +652,9 @@ h2 {
 }
 
 .step-title {
-    font-family: 'Instrument Serif', serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 1rem;
+    font-weight: 600;
     margin-bottom: 8px;
     letter-spacing: -0.02em;
     color: var(--ink);
@@ -731,8 +733,9 @@ h2 {
 }
 
 .feat-title {
-    font-family: 'Instrument Serif', serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 1rem;
+    font-weight: 600;
     margin-bottom: 8px;
     letter-spacing: -0.02em;
 }
@@ -1000,8 +1003,9 @@ h2 {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Instrument Serif', serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 1rem;
+    font-weight: 600;
     color: var(--ink);
     transition: border-color .3s;
 }
@@ -1071,8 +1075,9 @@ h2 {
 }
 
 .repo-name {
-    font-family: 'Instrument Serif', serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 1.3rem;
+    font-weight: 600;
     letter-spacing: -0.02em;
 }
 
@@ -1122,9 +1127,9 @@ h2 {
 }
 
 .contact-left h3 {
-    font-family: 'Instrument Serif', serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 1.7rem;
-    font-weight: 400;
+    font-weight: 600;
     letter-spacing: -0.03em;
     line-height: 1.25;
     margin-bottom: 16px;
@@ -1178,7 +1183,7 @@ h2 {
 .form input,
 .form textarea {
     width: 100%;
-    font-family: 'Geist', sans-serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 0.88rem;
     font-weight: 300;
     background: var(--white);
@@ -1211,8 +1216,9 @@ footer {
 }
 
 .footer-logo {
-    font-family: 'Instrument Serif', serif;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     font-size: 1rem;
+    font-weight: 600;
     color: var(--muted);
     text-decoration: none;
 }
