@@ -1,8 +1,16 @@
 """
-Metrics calculation module for Style Transfer AI.
-Handles readability metrics, statistical text analysis, and advanced
-computational stylometry features (Burrows' Delta, n-grams, vocabulary
-richness, syntactic complexity, etc.).
+Metrics calculation module for Style Transfer AI — v4.0
+Handles readability metrics, statistical text analysis, advanced
+computational stylometry (Burrows' Delta, n-grams, vocabulary richness,
+syntactic complexity) AND human-vs-AI pattern metrics.
+
+New in v4.0:
+  - compute_humanization_metrics()  → burstiness, entropy, AI-risk composite
+  - compute_ai_risk_score()         → single 0.0-1.0 AI-detection risk estimate
+  - compute_sentence_burstiness()   → coefficient of variation of sentence lengths
+  - detect_ai_clichés()             → counts known AI-generation marker phrases
+  - compute_vocabulary_burstiness() → local word clustering vs global
+  - post_process_for_humanness()    → rewrite post-processor that enforces human patterns
 """
 
 import re
@@ -17,8 +25,6 @@ from ..utils.text_processing import count_syllables
 # Constants
 # ---------------------------------------------------------------------------
 
-# Expanded function word list (top 50 most common English function words).
-# Function-word frequencies are among the strongest authorship signals.
 FUNCTION_WORDS = [
     "the", "and", "to", "of", "in", "a", "that", "it", "is", "was",
     "for", "on", "with", "as", "at", "by", "this", "an", "be", "not",
@@ -27,14 +33,12 @@ FUNCTION_WORDS = [
     "then", "she", "he", "his", "her", "would", "there", "what", "so", "can",
 ]
 
-# All major Universal POS tags tracked
 POS_TAGS = [
     "ADJ", "ADP", "ADV", "AUX", "CCONJ", "DET", "INTJ",
     "NOUN", "NUM", "PART", "PRON", "PROPN", "PUNCT",
     "SCONJ", "SYM", "VERB", "X",
 ]
 
-# Common contractions for contraction-rate calculation
 CONTRACTIONS = {
     "n't", "'re", "'ve", "'ll", "'d", "'m", "'s",
     "can't", "won't", "don't", "isn't", "aren't", "wasn't", "weren't",
@@ -46,36 +50,77 @@ CONTRACTIONS = {
     "she'd", "we'd", "they'd",
 }
 
-# Modal verbs (epistemic / deontic markers)
 MODAL_VERBS = {"can", "could", "may", "might", "must", "shall", "should", "will", "would"}
+
+# ── AI cliché phrases — statistically overrepresented in AI-generated text ──
+# Sourced from: GPTZero, Originality.ai, academic studies on AI text patterns.
+AI_CLICHE_PHRASES = [
+    # Stock transitions AI overuses
+    "furthermore", "moreover", "additionally", "consequently", "therefore",
+    "in conclusion", "to summarize", "in summary", "to sum up",
+    "in essence", "in other words", "that being said", "with that said",
+    "as mentioned", "as noted", "as discussed", "as stated",
+    # AI filler openers
+    "it is worth noting", "it is important to note", "it is important to",
+    "it should be noted", "it's worth noting", "needless to say",
+    "it goes without saying", "one must acknowledge", "one cannot deny",
+    # AI enthusiasm words (hallmarks of ChatGPT/Claude defaults)
+    "delve into", "dive into", "explore", "shed light on", "unpack",
+    "testament to", "a testament", "groundbreaking", "revolutionary",
+    "game-changer", "paradigm shift", "at the forefront", "cutting-edge",
+    "holistic approach", "leverage", "synergy", "robust",
+    # AI hedging boilerplate
+    "in today's world", "in today's society", "in today's fast-paced",
+    "in the realm of", "the realm of", "the world of",
+    "the landscape of", "the fabric of",
+    # AI summary clichés
+    "this highlights", "this demonstrates", "this underscores",
+    "this illustrates", "this shows that", "this reveals",
+    "this suggests that", "as we can see", "we can see that",
+    # AI instructional boilerplate
+    "let's explore", "let us explore", "let's dive", "let's delve",
+    "let's take a look", "let's examine", "let me walk you through",
+    # Hollow emphasis
+    "truly", "certainly", "undoubtedly", "unquestionably",
+    "absolutely", "without a doubt", "indeed",
+]
+
+# ── Human writing markers — patterns humans use more than AI ─────────────────
+HUMAN_MARKERS = [
+    # Casual connectors as sentence starters
+    r'\bso\b', r'\bbut\b', r'\band\b', r'\bbecause\b', r'\byet\b',
+    # Self-dialogue
+    r'\?.*?[Bb]ecause', r'\bwhy\?', r'\bwhat\?', r'\bhow\?',
+    # Hesitation / informality
+    r'\bactually\b', r'\bhonestly\b', r'\blook\b', r'\bhere\'s the thing\b',
+    r'\bthe thing is\b', r'\bfunny thing\b', r'\bweird(ly)?\b',
+    # Mild profanity / intensifiers
+    r'\bdamn\b', r'\bhell\b', r'\bpretty\b', r'\bkind of\b', r'\bsort of\b',
+    # Self-correction
+    r'\bor rather\b', r'\bor maybe\b', r'\bwell,\b', r'\bi mean\b',
+    r'\bthat is\b',
+]
+
 
 # ---------------------------------------------------------------------------
 # spaCy bootstrap
 # ---------------------------------------------------------------------------
 
 def _ensure_spacy_model():
-    """Ensure spaCy and the English model are available, returning a loaded nlp or None."""
     try:
         import spacy
     except Exception:
         try:
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", "spacy"],
-                check=True
-            )
+            subprocess.run([sys.executable, "-m", "pip", "install", "spacy"], check=True)
             import spacy
         except Exception:
             print("spaCy install failed. Please run: python -m pip install spacy")
             return None
-
     try:
         return spacy.load("en_core_web_sm")
     except Exception:
         try:
-            subprocess.run(
-                [sys.executable, "-m", "spacy", "download", "en_core_web_sm"],
-                check=True
-            )
+            subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"], check=True)
             return spacy.load("en_core_web_sm")
         except Exception:
             print("spaCy model download failed. Please run: python -m spacy download en_core_web_sm")
@@ -83,11 +128,10 @@ def _ensure_spacy_model():
 
 
 # ---------------------------------------------------------------------------
-# Vocabulary richness helpers
+# Vocabulary richness helpers (unchanged from v3.0)
 # ---------------------------------------------------------------------------
 
 def _hapax_legomena_ratio(word_freq: Counter, total_words: int) -> float:
-    """Words appearing exactly once / total words (strong authorship marker)."""
     if total_words == 0:
         return 0.0
     hapax = sum(1 for count in word_freq.values() if count == 1)
@@ -95,7 +139,6 @@ def _hapax_legomena_ratio(word_freq: Counter, total_words: int) -> float:
 
 
 def _dis_legomena_ratio(word_freq: Counter, total_words: int) -> float:
-    """Words appearing exactly twice / total words."""
     if total_words == 0:
         return 0.0
     dis = sum(1 for count in word_freq.values() if count == 2)
@@ -103,21 +146,15 @@ def _dis_legomena_ratio(word_freq: Counter, total_words: int) -> float:
 
 
 def _yules_k(word_freq: Counter, total_words: int) -> float:
-    """Yule's K – vocabulary richness independent of text length.
-    Lower K → richer vocabulary.  Typical prose: 80-200.
-    """
     if total_words == 0:
         return 0.0
     freq_spectrum = Counter(word_freq.values())
     m2 = sum(i * i * v_i for i, v_i in freq_spectrum.items())
-    if total_words == 0:
-        return 0.0
     k = 10_000 * (m2 - total_words) / (total_words * total_words) if total_words > 1 else 0.0
     return round(k, 4)
 
 
 def _simpsons_diversity(word_freq: Counter, total_words: int) -> float:
-    """Simpson's Diversity Index – probability two random words differ."""
     if total_words <= 1:
         return 0.0
     s = sum(n * (n - 1) for n in word_freq.values())
@@ -126,20 +163,16 @@ def _simpsons_diversity(word_freq: Counter, total_words: int) -> float:
 
 
 def _brunet_w(total_words: int, vocab_size: int) -> float:
-    """Brunet's W – another length-independent vocabulary measure.
-    Typical values around 20; lower = richer vocabulary.
-    """
     if total_words <= 0 or vocab_size <= 0:
         return 0.0
     return round(total_words ** (vocab_size ** -0.172), 4)
 
 
 def _honore_r(total_words: int, vocab_size: int, hapax_count: int) -> float:
-    """Honoré's R statistic – rewards large vocabularies with many hapax legomena."""
     if total_words == 0 or vocab_size == 0:
         return 0.0
     if hapax_count == vocab_size:
-        hapax_count = vocab_size - 1  # prevent division by zero
+        hapax_count = vocab_size - 1
     if vocab_size - hapax_count == 0:
         return 0.0
     r = 100 * math.log(total_words) / (1 - hapax_count / vocab_size)
@@ -147,13 +180,10 @@ def _honore_r(total_words: int, vocab_size: int, hapax_count: int) -> float:
 
 
 # ---------------------------------------------------------------------------
-# N-gram helpers
+# N-gram helpers (unchanged)
 # ---------------------------------------------------------------------------
 
 def _character_ngrams(text: str, n: int = 3, top_k: int = 25) -> dict:
-    """Extract character n-gram frequency profile (case-insensitive).
-    Character n-grams are among the *best* features for authorship attribution.
-    """
     cleaned = text.lower()
     ngrams = Counter()
     for i in range(len(cleaned) - n + 1):
@@ -165,7 +195,6 @@ def _character_ngrams(text: str, n: int = 3, top_k: int = 25) -> dict:
 
 
 def _word_bigrams(tokens_lower: list, top_k: int = 25) -> dict:
-    """Extract word bigram frequency profile."""
     bigrams = Counter()
     for i in range(len(tokens_lower) - 1):
         bigrams[(tokens_lower[i], tokens_lower[i + 1])] += 1
@@ -178,9 +207,486 @@ def _word_bigrams(tokens_lower: list, top_k: int = 25) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Main deep stylometry extraction
-# ---------------------------------------------------------------------------
+# ============================================================================
+# NEW IN v4.0 — HUMAN-VS-AI PATTERN METRICS
+# ============================================================================
+
+def compute_sentence_burstiness(text: str) -> dict:
+    """
+    Compute sentence length burstiness — the primary human-vs-AI signal.
+
+    AI text has burstiness_cv around 0.2-0.35.
+    Human text typically ranges 0.45-0.80+.
+
+    Returns a detailed burstiness profile including:
+      - coefficient of variation (CV = std/mean)
+      - consecutive-run penalty (AI tends to run same-length sentences)
+      - length bin distribution and entropy
+      - specific short/long sentence ratios
+    """
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    sentences = [s for s in sentences if s.strip()]
+
+    if len(sentences) < 3:
+        return {
+            "burstiness_cv": 0.0,
+            "burstiness_label": "insufficient data",
+            "consecutive_uniformity": 0.0,
+            "short_sentence_ratio": 0.0,
+            "long_sentence_ratio": 0.0,
+            "sentence_entropy": 0.0,
+            "length_bins": {},
+        }
+
+    sent_lengths = [len(re.findall(r"\b[a-zA-Z]+\b", s)) for s in sentences]
+    sent_lengths = [l for l in sent_lengths if l > 0]
+
+    if not sent_lengths:
+        return {"burstiness_cv": 0.0, "burstiness_label": "no data"}
+
+    mean_len = statistics.mean(sent_lengths)
+    std_len = statistics.pstdev(sent_lengths)
+    cv = round(std_len / mean_len, 4) if mean_len > 0 else 0.0
+
+    # Consecutive uniformity: fraction of adjacent pairs within 3 words of each other
+    runs = sum(1 for i in range(1, len(sent_lengths))
+               if abs(sent_lengths[i] - sent_lengths[i - 1]) <= 3)
+    uniformity = round(runs / max(len(sent_lengths) - 1, 1), 4)
+
+    # Length bins
+    bins = {"micro(1-4)": 0, "short(5-10)": 0, "medium(11-20)": 0,
+            "long(21-35)": 0, "very_long(36+)": 0}
+    for l in sent_lengths:
+        if l <= 4:      bins["micro(1-4)"] += 1
+        elif l <= 10:   bins["short(5-10)"] += 1
+        elif l <= 20:   bins["medium(11-20)"] += 1
+        elif l <= 35:   bins["long(21-35)"] += 1
+        else:           bins["very_long(36+)"] += 1
+
+    total = len(sent_lengths)
+    # Entropy of the bin distribution
+    entropy = 0.0
+    for count in bins.values():
+        if count > 0:
+            p = count / total
+            entropy -= p * math.log2(p)
+
+    short_ratio = round((bins["micro(1-4)"] + bins["short(5-10)"]) / total, 4)
+    long_ratio = round((bins["long(21-35)"] + bins["very_long(36+)"]) / total, 4)
+
+    label = (
+        "very human" if cv >= 0.55
+        else "human" if cv >= 0.40
+        else "borderline" if cv >= 0.28
+        else "AI-like (low variety)"
+    )
+
+    return {
+        "burstiness_cv": cv,
+        "burstiness_label": label,
+        "mean_sentence_length": round(mean_len, 2),
+        "std_sentence_length": round(std_len, 2),
+        "min_length": min(sent_lengths),
+        "max_length": max(sent_lengths),
+        "consecutive_uniformity": uniformity,
+        "uniformity_label": (
+            "uniform (AI-risk)" if uniformity > 0.65
+            else "moderate" if uniformity > 0.45
+            else "varied (human-like)"
+        ),
+        "short_sentence_ratio": short_ratio,
+        "long_sentence_ratio": long_ratio,
+        "sentence_entropy": round(entropy, 4),
+        "entropy_label": (
+            "high variety" if entropy >= 2.0
+            else "moderate variety" if entropy >= 1.4
+            else "low variety (AI-risk)"
+        ),
+        "length_bins": bins,
+        "bin_percentages": {k: round(v / total, 3) for k, v in bins.items()},
+    }
+
+
+def compute_vocabulary_burstiness(text: str, window_size: int = 60) -> dict:
+    """
+    Measure local vocabulary clustering — humans tend to use words in bursts
+    (topic-driven local repetition) rather than evenly distributed across text.
+
+    High window_std_dev of local TTR = bursty = human.
+    Low window_std_dev of local TTR = uniform = AI.
+    """
+    words = re.findall(r"\b[a-zA-Z]+\b", text.lower())
+    if len(words) < window_size * 2:
+        return {"vocabulary_burstiness": 0.0, "label": "insufficient data"}
+
+    window_ttrs = []
+    for i in range(0, len(words) - window_size, window_size // 2):
+        chunk = words[i:i + window_size]
+        ttr = len(set(chunk)) / len(chunk)
+        window_ttrs.append(ttr)
+
+    if len(window_ttrs) < 2:
+        return {"vocabulary_burstiness": 0.0, "label": "insufficient data"}
+
+    mean_ttr = statistics.mean(window_ttrs)
+    std_ttr = statistics.pstdev(window_ttrs)
+    cv = round(std_ttr / mean_ttr, 4) if mean_ttr > 0 else 0.0
+
+    return {
+        "vocabulary_burstiness_cv": cv,
+        "mean_window_ttr": round(mean_ttr, 4),
+        "std_window_ttr": round(std_ttr, 4),
+        "num_windows": len(window_ttrs),
+        "label": (
+            "bursty (human-like)" if cv >= 0.08
+            else "moderately bursty" if cv >= 0.04
+            else "uniform (AI-like)"
+        ),
+    }
+
+
+def detect_ai_clichés(text: str) -> dict:
+    """
+    Detect AI-generation marker phrases in text.
+
+    Returns counts, density per 100 words, and a flagged list of
+    phrases found. High density → high AI-detection risk.
+    """
+    text_lower = text.lower()
+    words = re.findall(r"\b[a-zA-Z]+\b", text_lower)
+    total_words = max(len(words), 1)
+
+    found_phrases = []
+    total_count = 0
+
+    for phrase in AI_CLICHE_PHRASES:
+        count = text_lower.count(phrase)
+        if count > 0:
+            found_phrases.append({"phrase": phrase, "count": count})
+            total_count += count
+
+    density = round(total_count / (total_words / 100), 4)
+
+    return {
+        "ai_cliche_count": total_count,
+        "ai_cliche_density_per_100w": density,
+        "ai_cliche_risk_label": (
+            "high risk" if density > 3.0
+            else "moderate risk" if density > 1.5
+            else "low risk" if density > 0.5
+            else "clean"
+        ),
+        "flagged_phrases": sorted(found_phrases, key=lambda x: -x["count"])[:20],
+        "unique_clichés_found": len(found_phrases),
+    }
+
+
+def count_human_markers(text: str) -> dict:
+    """
+    Count the presence of patterns that are statistically more common
+    in human writing than AI writing.
+    """
+    text_lower = text.lower()
+    total_words = max(len(re.findall(r"\b[a-zA-Z]+\b", text)), 1)
+
+    found = {}
+    total = 0
+    for pattern in HUMAN_MARKERS:
+        matches = len(re.findall(pattern, text_lower))
+        if matches > 0:
+            found[pattern] = matches
+            total += matches
+
+    density = round(total / (total_words / 100), 4)
+
+    return {
+        "human_marker_count": total,
+        "human_marker_density_per_100w": density,
+        "human_marker_label": (
+            "strongly human" if density > 4.0
+            else "moderately human" if density > 2.0
+            else "weakly human" if density > 0.5
+            else "neutral"
+        ),
+        "patterns_found": found,
+    }
+
+
+def compute_ai_risk_score(text: str) -> dict:
+    """
+    Composite AI-detection risk score (0.0 = definitely human, 1.0 = definitely AI).
+
+    Combines 6 independently computed signals:
+      1. Sentence burstiness (CV)
+      2. Sentence entropy
+      3. AI cliché density
+      4. Consecutive uniformity
+      5. Vocabulary burstiness
+      6. Human marker presence
+
+    Each signal is normalized and weighted based on published research
+    on AI text detection feature importance.
+    """
+    burstiness = compute_sentence_burstiness(text)
+    vocab_burst = compute_vocabulary_burstiness(text)
+    ai_clichés = detect_ai_clichés(text)
+    human_marks = count_human_markers(text)
+
+    # ── Signal 1: Sentence CV (weight 0.28) ──────────────────────────────────
+    cv = burstiness.get("burstiness_cv", 0.0)
+    # CV < 0.25 = AI. CV > 0.55 = human. Normalize to 0-1 risk.
+    s1 = max(0.0, min(1.0, (0.55 - cv) / 0.55))
+
+    # ── Signal 2: Sentence entropy (weight 0.18) ─────────────────────────────
+    entropy = burstiness.get("sentence_entropy", 0.0)
+    # entropy < 1.2 = AI. entropy > 2.2 = human.
+    s2 = max(0.0, min(1.0, (2.2 - entropy) / 2.2))
+
+    # ── Signal 3: AI cliché density (weight 0.22) ────────────────────────────
+    cliché_density = ai_clichés.get("ai_cliche_density_per_100w", 0.0)
+    # density > 4.0 = AI. density < 0.5 = human.
+    s3 = max(0.0, min(1.0, cliché_density / 4.0))
+
+    # ── Signal 4: Consecutive uniformity (weight 0.18) ───────────────────────
+    uniformity = burstiness.get("consecutive_uniformity", 0.5)
+    # uniformity > 0.70 = AI. uniformity < 0.35 = human.
+    s4 = max(0.0, min(1.0, (uniformity - 0.35) / 0.35))
+
+    # ── Signal 5: Vocab burstiness CV (weight 0.08) ──────────────────────────
+    vb_cv = vocab_burst.get("vocabulary_burstiness_cv", 0.05)
+    # vb_cv < 0.03 = AI. vb_cv > 0.10 = human.
+    s5 = max(0.0, min(1.0, (0.10 - vb_cv) / 0.10))
+
+    # ── Signal 6: Human markers (weight 0.06) ────────────────────────────────
+    hm_density = human_marks.get("human_marker_density_per_100w", 0.0)
+    # hm_density < 0.5 = AI. hm_density > 4.0 = human.
+    s6 = max(0.0, min(1.0, (4.0 - hm_density) / 4.0))
+
+    # Weighted composite
+    ai_risk = (
+        0.28 * s1 +
+        0.18 * s2 +
+        0.22 * s3 +
+        0.18 * s4 +
+        0.08 * s5 +
+        0.06 * s6
+    )
+    ai_risk = round(min(1.0, max(0.0, ai_risk)), 4)
+    human_likeness = round(1.0 - ai_risk, 4)
+
+    return {
+        "ai_risk_score": ai_risk,
+        "human_likeness_score": human_likeness,
+        "risk_label": (
+            "very high risk (AI-like)" if ai_risk >= 0.75
+            else "high risk" if ai_risk >= 0.60
+            else "moderate risk" if ai_risk >= 0.40
+            else "low risk (human-like)" if ai_risk >= 0.20
+            else "very human-like"
+        ),
+        "signal_breakdown": {
+            "sentence_cv_risk":        round(s1, 4),
+            "sentence_entropy_risk":   round(s2, 4),
+            "ai_cliche_risk":          round(s3, 4),
+            "uniformity_risk":         round(s4, 4),
+            "vocab_burstiness_risk":   round(s5, 4),
+            "human_marker_risk":       round(s6, 4),
+        },
+        "burstiness_detail": burstiness,
+        "vocab_burstiness_detail": vocab_burst,
+        "ai_clichés_detail": ai_clichés,
+        "human_markers_detail": human_marks,
+    }
+
+
+def compute_humanization_metrics(text: str) -> dict:
+    """
+    Master function returning all human-vs-AI metrics in one dict.
+    Designed to be called once and passed to both the analysis pipeline
+    and the post-processor.
+    """
+    ai_risk = compute_ai_risk_score(text)
+    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    words = re.findall(r"\b[a-zA-Z]+\b", text)
+
+    # ── Paragraph length variance ────────────────────────────────────────────
+    para_lengths = [len(re.findall(r"\b[a-zA-Z]+\b", p)) for p in paragraphs if p]
+    para_cv = 0.0
+    if len(para_lengths) >= 2:
+        pm = statistics.mean(para_lengths)
+        ps = statistics.pstdev(para_lengths)
+        para_cv = round(ps / pm, 4) if pm > 0 else 0.0
+
+    # ── Punctuation irregularity across paragraphs ───────────────────────────
+    punct_densities = []
+    for p in paragraphs:
+        pw = len(re.findall(r"\b[a-zA-Z]+\b", p))
+        pc = sum(1 for ch in p if ch in ".,;:!?—-")
+        if pw > 0:
+            punct_densities.append(pc / pw)
+    punct_irregularity = round(statistics.pstdev(punct_densities), 4) if len(punct_densities) > 1 else 0.0
+
+    return {
+        **ai_risk,
+        "paragraph_count": len(paragraphs),
+        "paragraph_length_cv": para_cv,
+        "para_cv_label": (
+            "varied (human-like)" if para_cv >= 0.45
+            else "moderate" if para_cv >= 0.25
+            else "uniform (AI-like)"
+        ),
+        "punct_irregularity_across_paragraphs": punct_irregularity,
+        "total_words": len(words),
+        "total_sentences": len([s for s in sentences if s.strip()]),
+    }
+
+
+def post_process_for_humanness(text: str, style_profile: dict | None = None) -> dict:
+    """
+    Analyzes a piece of text (typically rewriter output) and returns:
+      1. A humanness audit with specific problems identified
+      2. Concrete repair instructions for a second-pass rewrite
+      3. The AI risk score before and after estimated repairs
+
+    This is meant to be called on the OUTPUT of a style injection rewrite
+    to check whether it has become more human-like or still reads as AI.
+
+    Args:
+        text: The rewritten text to audit
+        style_profile: Optional — the original style profile to compare against
+
+    Returns:
+        dict with 'audit', 'repair_instructions', 'ai_risk_score'
+    """
+    metrics = compute_humanization_metrics(text)
+    burstiness = metrics.get("burstiness_detail", {})
+    clichés = metrics.get("ai_clichés_detail", {})
+
+    audit = {
+        "ai_risk_score": metrics.get("ai_risk_score"),
+        "risk_label": metrics.get("risk_label"),
+        "human_likeness_score": metrics.get("human_likeness_score"),
+        "problems": [],
+        "strengths": [],
+    }
+
+    repair_instructions = []
+
+    # ── Check burstiness ─────────────────────────────────────────────────────
+    cv = burstiness.get("burstiness_cv", 0.0)
+    if cv < 0.28:
+        audit["problems"].append(
+            f"Very low sentence length variety (CV={cv}). All sentences are similar length — "
+            f"major AI detection trigger."
+        )
+        repair_instructions.append(
+            "URGENT: Break up consecutive same-length sentences. After every block of 2-3 "
+            "sentences of 15+ words, insert a standalone sentence of 3-7 words maximum."
+        )
+    elif cv < 0.40:
+        audit["problems"].append(
+            f"Moderate sentence length variety (CV={cv}). Needs more extreme short/long contrast."
+        )
+        repair_instructions.append(
+            "Add at least 3 micro-sentences (1-5 words) spread across the text. "
+            "These can be rhetorical fragments or standalone punchy points."
+        )
+    else:
+        audit["strengths"].append(f"Good sentence length burstiness (CV={cv}).")
+
+    # ── Check uniformity ─────────────────────────────────────────────────────
+    uniformity = burstiness.get("consecutive_uniformity", 0.0)
+    if uniformity > 0.65:
+        audit["problems"].append(
+            f"High consecutive uniformity ({uniformity}). Too many adjacent sentences of "
+            f"similar length — pattern AI detectors flag heavily."
+        )
+        repair_instructions.append(
+            "Find any sequence of 3+ sentences all between 12-20 words. Split the "
+            "longest into two shorter ones, or merge the two shortest."
+        )
+
+    # ── Check short sentence ratio ────────────────────────────────────────────
+    short_ratio = burstiness.get("short_sentence_ratio", 0.0)
+    if short_ratio < 0.10:
+        audit["problems"].append(
+            f"Almost no short sentences ({short_ratio:.0%}). Human writers naturally "
+            f"produce short punchy sentences. AI avoids them."
+        )
+        repair_instructions.append(
+            "Add at least 2-4 sentences of 4 words or fewer. These can be rhetorical "
+            "questions, emphatic declarations, or abrupt pivots."
+        )
+    else:
+        audit["strengths"].append(f"Healthy short sentence presence ({short_ratio:.0%}).")
+
+    # ── Check AI clichés ─────────────────────────────────────────────────────
+    cliché_density = clichés.get("ai_cliche_density_per_100w", 0.0)
+    if cliché_density > 1.5:
+        flagged = [p["phrase"] for p in clichés.get("flagged_phrases", [])[:5]]
+        audit["problems"].append(
+            f"High AI cliché density ({cliché_density}/100w). Found: {flagged}"
+        )
+        repair_instructions.append(
+            f"Remove or rephrase these AI-marker phrases: {flagged}. "
+            f"Replace with direct, specific, concrete language."
+        )
+    elif cliché_density == 0.0:
+        audit["strengths"].append("No AI cliché phrases detected.")
+
+    # ── Check paragraph variety ──────────────────────────────────────────────
+    para_cv = metrics.get("paragraph_length_cv", 0.0)
+    if para_cv < 0.20 and metrics.get("paragraph_count", 0) >= 3:
+        audit["problems"].append(
+            f"Uniform paragraph lengths (CV={para_cv}). All paragraphs are roughly the "
+            f"same size — a hallmark of AI-generated structure."
+        )
+        repair_instructions.append(
+            "Vary paragraph lengths: make one paragraph a single sentence, make another "
+            "paragraph at least twice the average length."
+        )
+    elif para_cv >= 0.40:
+        audit["strengths"].append(f"Good paragraph length variety (CV={para_cv}).")
+
+    # ── Compare against source profile if available ──────────────────────────
+    if style_profile:
+        src_metrics = style_profile.get("human_pattern_metrics", {})
+        src_burst = src_metrics.get("burstiness_cv", 0.0)
+        if src_burst and cv < src_burst * 0.70:
+            repair_instructions.append(
+                f"Source author had burstiness CV={src_burst} but rewrite is only {cv}. "
+                f"The rewrite is MORE uniform than the original. Increase sentence variety."
+            )
+
+    # ── Overall verdict ──────────────────────────────────────────────────────
+    risk = metrics.get("ai_risk_score", 0.5)
+    if risk >= 0.60:
+        audit["verdict"] = (
+            f"⚠ HIGH AI DETECTION RISK ({risk}). This text will likely be flagged. "
+            f"Apply all repair instructions before publishing."
+        )
+    elif risk >= 0.40:
+        audit["verdict"] = (
+            f"⚡ MODERATE RISK ({risk}). Apply the repair instructions for best results."
+        )
+    else:
+        audit["verdict"] = (
+            f"✓ LOW RISK ({risk}). Text reads as human-like. "
+            f"Minor improvements possible."
+        )
+
+    return {
+        "audit": audit,
+        "repair_instructions": repair_instructions,
+        "full_metrics": metrics,
+        "estimated_post_repair_risk": max(0.0, round(risk - 0.15 * len(repair_instructions), 4)),
+    }
+
+
+# ============================================================================
+# DEEP STYLOMETRY (unchanged from v3.0, kept for compatibility)
+# ============================================================================
 
 _EMPTY_PROFILE = {
     "pos_ratios": {tag: 0.0 for tag in POS_TAGS},
@@ -216,23 +722,7 @@ _EMPTY_PROFILE = {
 def extract_deep_stylometry(text):
     """
     Extract a comprehensive deep stylometry feature set using spaCy.
-
-    Features extracted:
-    ─ Full POS tag distribution (17 Universal POS tags)
-    ─ 50 function-word frequencies
-    ─ Dependency tree depth (avg & max)
-    ─ Sentence length distribution (mean / median / std / min / max)
-    ─ Vocabulary richness (hapax, Yule's K, Simpson's D, Brunet's W, Honoré's R)
-    ─ Average word length
-    ─ Contraction rate
-    ─ Passive voice ratio
-    ─ Modal verb frequency
-    ─ Sentence-starter POS distribution
-    ─ Named-entity type distribution
-    ─ Character trigram profile (top 25)
-    ─ Word bigram profile (top 25)
-    ─ Punctuation / quotation density
-    ─ Question & exclamation ratios
+    Now also appends humanization metrics to the returned dict.
     """
     if not text or not text.strip():
         return dict(_EMPTY_PROFILE)
@@ -241,7 +731,6 @@ def extract_deep_stylometry(text):
     if nlp is None:
         return dict(_EMPTY_PROFILE)
 
-    # spaCy has a default max_length; process in chunks if needed
     max_len = nlp.max_length
     if len(text) > max_len:
         nlp.max_length = len(text) + 1000
@@ -252,14 +741,14 @@ def extract_deep_stylometry(text):
     if total_tokens == 0:
         return dict(_EMPTY_PROFILE)
 
-    # --- POS ratios (all 17 tags) ---
+    # POS ratios
     pos_counter = Counter(t.pos_ for t in tokens)
     pos_ratios = {
         tag: round(pos_counter.get(tag, 0) / total_tokens, 4)
         for tag in POS_TAGS
     }
 
-    # --- Function word frequencies ---
+    # Function word frequencies
     token_texts_lower = [t.text.lower() for t in tokens]
     fw_counter = Counter(w for w in token_texts_lower if w in set(FUNCTION_WORDS))
     function_word_freq = {
@@ -267,7 +756,7 @@ def extract_deep_stylometry(text):
         for w in FUNCTION_WORDS
     }
 
-    # --- Dependency tree depth ---
+    # Dependency tree depth
     def _node_depth(node, _seen=None):
         if _seen is None:
             _seen = set()
@@ -290,30 +779,21 @@ def extract_deep_stylometry(text):
         if not sent_tokens:
             continue
         sentence_lengths.append(len(sent_tokens))
-
-        # Sentence starter POS
         sentence_starter_pos_counter[sent_tokens[0].pos_] += 1
-
-        # Question / exclamation detection
         sent_text = sent.text.strip()
         if sent_text.endswith("?"):
             question_count += 1
         elif sent_text.endswith("!"):
             exclamation_count += 1
-
-        # Depth
         roots = [t for t in sent if t.head == t]
         if roots:
             sentence_depths.append(max(_node_depth(r) for r in roots))
 
     total_sentences = len(sentence_lengths) if sentence_lengths else 1
 
-    avg_dep_depth = (
-        sum(sentence_depths) / len(sentence_depths) if sentence_depths else 0.0
-    )
+    avg_dep_depth = sum(sentence_depths) / len(sentence_depths) if sentence_depths else 0.0
     max_dep_depth = max(sentence_depths) if sentence_depths else 0
 
-    # --- Sentence length distribution ---
     if sentence_lengths:
         sent_len_dist = {
             "mean": round(statistics.mean(sentence_lengths), 2),
@@ -325,7 +805,6 @@ def extract_deep_stylometry(text):
     else:
         sent_len_dist = {"mean": 0.0, "median": 0.0, "std_dev": 0.0, "min": 0, "max": 0}
 
-    # --- Vocabulary richness ---
     words_alpha = [w for w in token_texts_lower if w.isalpha()]
     word_freq = Counter(words_alpha)
     total_alpha = len(words_alpha)
@@ -341,19 +820,16 @@ def extract_deep_stylometry(text):
         "honore_r": _honore_r(total_alpha, vocab_size, hapax_count),
     }
 
-    # --- Average word length ---
     avg_word_length = (
         round(sum(len(w) for w in words_alpha) / total_alpha, 4)
         if total_alpha else 0.0
     )
 
-    # --- Contraction rate ---
     contraction_count = sum(
         1 for t in tokens if t.text.lower() in CONTRACTIONS or "'" in t.text
     )
     contraction_rate = round(contraction_count / total_tokens, 4)
 
-    # --- Passive voice ratio (nsubjpass / nsubj+nsubjpass) ---
     nsubj_count = sum(1 for t in doc if t.dep_ == "nsubj")
     nsubjpass_count = sum(1 for t in doc if t.dep_ in ("nsubjpass", "nsubj:pass"))
     passive_total = nsubj_count + nsubjpass_count
@@ -361,7 +837,6 @@ def extract_deep_stylometry(text):
         round(nsubjpass_count / passive_total, 4) if passive_total > 0 else 0.0
     )
 
-    # --- Modal verb frequency ---
     modal_counter = Counter(
         t.text.lower() for t in tokens if t.text.lower() in MODAL_VERBS
     )
@@ -369,37 +844,32 @@ def extract_deep_stylometry(text):
         v: round(modal_counter.get(v, 0) / total_tokens, 4) for v in MODAL_VERBS
     }
 
-    # --- Sentence-starter POS distribution ---
     starter_total = sum(sentence_starter_pos_counter.values())
     sentence_starter_pos = {
         pos: round(cnt / starter_total, 4)
         for pos, cnt in sentence_starter_pos_counter.most_common()
     } if starter_total else {}
 
-    # --- Named entity distribution ---
     ent_counter = Counter(ent.label_ for ent in doc.ents)
     ent_total = sum(ent_counter.values())
     named_entity_distribution = {
         label: round(cnt / ent_total, 4) for label, cnt in ent_counter.most_common()
     } if ent_total else {}
 
-    # --- Character trigram profile ---
     char_trigram_profile = _character_ngrams(text, n=3, top_k=25)
-
-    # --- Word bigram profile ---
     word_bigram_profile = _word_bigrams(words_alpha, top_k=25)
 
-    # --- Punctuation density (punctuation tokens per sentence) ---
     punct_count = sum(1 for t in tokens if t.is_punct)
     punctuation_density = round(punct_count / total_sentences, 4)
 
-    # --- Quotation density ---
-    quote_count = text.count('"') + text.count('"') + text.count('"') + text.count("'")
+    quote_count = text.count('"') + text.count('\u201c') + text.count('\u201d') + text.count("'")
     quotation_density = round(quote_count / total_tokens, 4)
 
-    # --- Question / exclamation ratios ---
     question_ratio = round(question_count / total_sentences, 4)
     exclamation_ratio = round(exclamation_count / total_sentences, 4)
+
+    # ── Append humanization metrics (NEW in v4.0) ────────────────────────────
+    humanization = compute_humanization_metrics(text)
 
     return {
         "pos_ratios": pos_ratios,
@@ -420,25 +890,19 @@ def extract_deep_stylometry(text):
         "quotation_density": quotation_density,
         "question_ratio": question_ratio,
         "exclamation_ratio": exclamation_ratio,
+        # ── New in v4.0 ───────────────────────────────────────────────────────
+        "humanization_metrics": humanization,
     }
 
 
 # ---------------------------------------------------------------------------
-# Similarity / Burrows' Delta
+# Style similarity / Burrows' Delta (unchanged from v3.0)
 # ---------------------------------------------------------------------------
 
 def calculate_style_similarity(profile_a, profile_b):
     """
-    Calculate style similarity using multiple complementary methods:
-
-    1. **Cosine similarity** on the full feature vector (POS + function words +
-       scalar features).
-    2. **Burrows' Delta** – the gold-standard distance in computational
-       stylometry, using z-scores of the most-frequent-word frequencies.
-    3. **N-gram overlap** (Jaccard) on character trigram keys.
-
-    Returns a dict with individual scores and a combined score (0.0–1.0,
-    where 1.0 = identical style).
+    Calculate style similarity using cosine similarity, Burrows' Delta,
+    and N-gram overlap.
     """
     if not profile_a or not profile_b:
         return {
@@ -448,16 +912,12 @@ def calculate_style_similarity(profile_a, profile_b):
             "combined_score": 0.0,
         }
 
-    # ------ Feature vector for cosine similarity ------
     def _vectorize(profile):
         vec = []
-        # POS ratios
         pos = profile.get("pos_ratios", {})
         vec.extend(float(pos.get(tag, 0.0)) for tag in POS_TAGS)
-        # Function word frequencies
         fw = profile.get("function_word_freq", {})
         vec.extend(float(fw.get(w, 0.0)) for w in FUNCTION_WORDS)
-        # Scalar features
         vec.append(float(profile.get("avg_dependency_depth", 0.0)))
         vec.append(float(profile.get("avg_word_length", 0.0)))
         vec.append(float(profile.get("contraction_rate", 0.0)))
@@ -466,15 +926,12 @@ def calculate_style_similarity(profile_a, profile_b):
         vec.append(float(profile.get("question_ratio", 0.0)))
         vec.append(float(profile.get("exclamation_ratio", 0.0)))
         vec.append(float(profile.get("quotation_density", 0.0)))
-        # Modal verb frequencies
         mv = profile.get("modal_verb_freq", {})
         vec.extend(float(mv.get(v, 0.0)) for v in MODAL_VERBS)
-        # Vocabulary richness scalars
         vr = profile.get("vocabulary_richness", {})
         vec.append(float(vr.get("hapax_legomena_ratio", 0.0)))
         vec.append(float(vr.get("yules_k", 0.0)))
         vec.append(float(vr.get("simpsons_diversity", 0.0)))
-        # Sentence length distribution
         sl = profile.get("sentence_length_distribution", {})
         vec.append(float(sl.get("mean", 0.0)))
         vec.append(float(sl.get("std_dev", 0.0)))
@@ -483,18 +940,14 @@ def calculate_style_similarity(profile_a, profile_b):
     vec_a = _vectorize(profile_a)
     vec_b = _vectorize(profile_b)
 
-    # Cosine similarity
     dot = sum(a * b for a, b in zip(vec_a, vec_b))
     norm_a = math.sqrt(sum(a * a for a in vec_a))
     norm_b = math.sqrt(sum(b * b for b in vec_b))
     cosine_sim = (dot / (norm_a * norm_b)) if (norm_a > 0 and norm_b > 0) else 0.0
     cosine_sim = max(0.0, min(1.0, cosine_sim))
 
-    # ------ Burrows' Delta ------
-    # Uses function word frequencies; delta = mean |z_a - z_b| across features.
     fw_a = profile_a.get("function_word_freq", {})
     fw_b = profile_b.get("function_word_freq", {})
-    # Compute z-scores relative to the two-text "corpus"
     deltas = []
     for w in FUNCTION_WORDS:
         fa = float(fw_a.get(w, 0.0))
@@ -506,146 +959,114 @@ def calculate_style_similarity(profile_a, profile_b):
         else:
             deltas.append(0.0)
     burrows_delta_raw = sum(deltas) / len(deltas) if deltas else 0.0
-    # Convert to similarity (0-1); delta of 0 → similarity 1
     burrows_similarity = max(0.0, 1.0 - burrows_delta_raw)
 
-    # ------ N-gram (character trigram) overlap (Jaccard) ------
     ngram_a = set(profile_a.get("char_trigram_profile", {}).keys())
     ngram_b = set(profile_b.get("char_trigram_profile", {}).keys())
     if ngram_a or ngram_b:
         ngram_overlap = len(ngram_a & ngram_b) / len(ngram_a | ngram_b)
     else:
         ngram_overlap = 0.0
-    ngram_overlap = round(ngram_overlap, 4)
 
-    # ------ Combined score (weighted average) ------
-    # Weights chosen to emphasise Burrows' Delta (most validated in literature)
     combined = (
-        0.30 * cosine_sim
-        + 0.45 * burrows_similarity
-        + 0.25 * ngram_overlap
+        0.30 * cosine_sim +
+        0.45 * burrows_similarity +
+        0.25 * ngram_overlap
     )
     combined = round(max(0.0, min(1.0, combined)), 4)
 
     return {
         "cosine_similarity": round(cosine_sim, 4),
         "burrows_delta": round(burrows_similarity, 4),
-        "ngram_overlap": ngram_overlap,
+        "ngram_overlap": round(ngram_overlap, 4),
         "combined_score": combined,
     }
 
 
+# ---------------------------------------------------------------------------
+# Readability & text statistics (unchanged from v3.0)
+# ---------------------------------------------------------------------------
+
 def calculate_readability_metrics(text):
-    """Calculate various readability and complexity metrics."""
-    # Input validation
     if not text or not text.strip():
         return {}
-    
-    # Basic text statistics
     sentences = re.split(r'[.!?]+', text)
     sentences = [s.strip() for s in sentences if s.strip()]
     words = text.split()
-    
-    # Additional validation
     if not words or not sentences:
         return {}
-    
+
     syllables = sum([count_syllables(word) for word in words])
-    
-    # Readability scores
     avg_sentence_length = len(words) / len(sentences)
     avg_syllables_per_word = syllables / len(words)
-    
-    # Flesch Reading Ease
     flesch_score = 206.835 - (1.015 * avg_sentence_length) - (84.6 * avg_syllables_per_word)
-    
-    # Flesch-Kincaid Grade Level
     fk_grade = (0.39 * avg_sentence_length) + (11.8 * avg_syllables_per_word) - 15.59
-    
-    # Coleman-Liau Index
     avg_letters_per_100_words = (sum(len(word) for word in words) / len(words)) * 100
     avg_sentences_per_100_words = (len(sentences) / len(words)) * 100
     coleman_liau = (0.0588 * avg_letters_per_100_words) - (0.296 * avg_sentences_per_100_words) - 15.8
-    
+
     return {
         "flesch_reading_ease": round(flesch_score, 2),
         "flesch_kincaid_grade": round(fk_grade, 2),
         "coleman_liau_index": round(coleman_liau, 2),
         "avg_sentence_length": round(avg_sentence_length, 2),
-        "avg_syllables_per_word": round(avg_syllables_per_word, 2)
+        "avg_syllables_per_word": round(avg_syllables_per_word, 2),
     }
 
 
 def analyze_text_statistics(text):
-    """Perform detailed statistical analysis of text with vocabulary richness."""
-    # Input validation
     empty_result = {
-        'word_count': 0,
-        'sentence_count': 0,
-        'paragraph_count': 0,
-        'character_count': 0,
-        'avg_words_per_sentence': 0,
-        'avg_sentences_per_paragraph': 0,
-        'avg_word_length': 0,
-        'word_frequency': {},
-        'punctuation_counts': {},
-        'sentence_types': {},
-        'unique_words': 0,
-        'lexical_diversity': 0,
+        'word_count': 0, 'sentence_count': 0, 'paragraph_count': 0,
+        'character_count': 0, 'avg_words_per_sentence': 0,
+        'avg_sentences_per_paragraph': 0, 'avg_word_length': 0,
+        'word_frequency': {}, 'punctuation_counts': {}, 'sentence_types': {},
+        'unique_words': 0, 'lexical_diversity': 0,
         'vocabulary_richness': {
-            'hapax_legomena_ratio': 0.0,
-            'dis_legomena_ratio': 0.0,
-            'yules_k': 0.0,
-            'simpsons_diversity': 0.0,
+            'hapax_legomena_ratio': 0.0, 'dis_legomena_ratio': 0.0,
+            'yules_k': 0.0, 'simpsons_diversity': 0.0,
         },
+        'humanization_metrics': {},
     }
     if not text or not text.strip():
         return dict(empty_result)
-    
+
     words = text.split()
     sentences = re.split(r'[.!?]+', text)
     sentences = [s.strip() for s in sentences if s.strip()]
     paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
-    
+
     if not words:
-        empty_result['sentence_count'] = len(sentences)
-        empty_result['paragraph_count'] = len(paragraphs)
-        empty_result['character_count'] = len(text)
+        empty_result.update({
+            'sentence_count': len(sentences),
+            'paragraph_count': len(paragraphs),
+            'character_count': len(text),
+        })
         return empty_result
-    
-    # Word frequency analysis
+
     word_freq = Counter(word.lower().strip('.,!?";:()[]{}') for word in words)
-    
-    # Punctuation analysis
     punctuation_counts = {
-        'commas': text.count(','),
-        'periods': text.count('.'),
-        'semicolons': text.count(';'),
-        'colons': text.count(':'),
-        'exclamations': text.count('!'),
-        'questions': text.count('?'),
+        'commas': text.count(','), 'periods': text.count('.'),
+        'semicolons': text.count(';'), 'colons': text.count(':'),
+        'exclamations': text.count('!'), 'questions': text.count('?'),
         'dashes': text.count('—') + text.count('--'),
-        'parentheses': text.count('(')
+        'parentheses': text.count('('),
     }
-    
-    # Sentence type analysis
     sentence_types = {
         'declarative': len([s for s in sentences if s.strip().endswith('.')]),
         'interrogative': len([s for s in sentences if s.strip().endswith('?')]),
         'exclamatory': len([s for s in sentences if s.strip().endswith('!')]),
-        'imperative': 0
+        'imperative': 0,
     }
-    
-    # Safe calculations with validation
+
     unique_words_count = len(set(word.lower() for word in words))
     alpha_words = [w.lower().strip('.,!?";:()[]{}') for w in words if w.strip('.,!?";:()[]{}').isalpha()]
     alpha_freq = Counter(alpha_words)
     total_alpha = len(alpha_words)
-    
-    avg_word_length = round(
-        sum(len(w) for w in alpha_words) / total_alpha, 2
-    ) if total_alpha else 0
-    
+    avg_word_length = round(sum(len(w) for w in alpha_words) / total_alpha, 2) if total_alpha else 0
+
+    # ── NEW: humanization metrics appended ───────────────────────────────────
+    humanization = compute_humanization_metrics(text)
+
     return {
         'word_count': len(words),
         'sentence_count': len(sentences),
@@ -665,4 +1086,5 @@ def analyze_text_statistics(text):
             'yules_k': _yules_k(alpha_freq, total_alpha),
             'simpsons_diversity': _simpsons_diversity(alpha_freq, total_alpha),
         },
+        'humanization_metrics': humanization,
     }
