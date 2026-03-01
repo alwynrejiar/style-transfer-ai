@@ -680,6 +680,12 @@ h2 {
     margin-bottom: 56px;
 }
 
+.feat-lead {
+    max-width: 260px;
+    text-align: right;
+    font-size: 0.85rem;
+}
+
 .feat-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -1452,9 +1458,11 @@ html[data-anim-ready] [data-anim].shown {
         gap: 16px;
     }
 
-    .feat-header .lead {
-        max-width: 100% !important;
-        text-align: left !important;
+    .feat-header .lead,
+    .feat-lead {
+        max-width: 100%;
+        text-align: left;
+        font-size: 0.85rem;
     }
 
     .team-grid {
