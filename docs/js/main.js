@@ -4,12 +4,16 @@
     const ring = document.getElementById('curRing');
     if (!cur || !ring) return;
 
-    let mx = 0, my = 0, cx = 0, cy = 0, rx = 0, ry = 0;
+    // Start off screen
+    let mx = -100, my = -100, cx = -100, cy = -100, rx = -100, ry = -100;
 
-    window.addEventListener('mousemove', function (e) {
+    function updateMouse(e) {
         mx = e.clientX;
         my = e.clientY;
-    });
+    }
+
+    document.addEventListener('mousemove', updateMouse);
+    document.addEventListener('pointermove', updateMouse);
 
     (function draw() {
         cx += (mx - cx) * 0.18;
