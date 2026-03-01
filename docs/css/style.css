@@ -130,6 +130,8 @@ nav {
 
 .nav-links a.active {
     color: var(--ink);
+    background: var(--off);
+    font-weight: 500;
 }
 
 .nav-cta {
@@ -1356,6 +1358,7 @@ html[data-anim-ready] [data-anim].shown {
     .nav-links a:hover,
     .nav-links a.active {
         background: var(--off) !important;
+        font-weight: 500;
     }
 
     .nav-links .nav-cta {
