@@ -1562,6 +1562,11 @@ html[data-anim-ready] [data-anim].shown {
         grid-template-columns: 1fr;
         gap: 12px;
         max-width: 100%;
+        margin-bottom: 12px;
+    }
+
+    .feat-grid:last-child {
+        margin-bottom: 0;
     }
 
     .video-frame {
