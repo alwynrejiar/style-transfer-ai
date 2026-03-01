@@ -690,6 +690,17 @@ h2 {
     overflow: hidden;
 }
 
+.feat-grid-cont {
+    border-top: none;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.feat-grid:first-of-type {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
 .feat {
     background: var(--white);
     padding: 36px 32px;
@@ -1562,15 +1573,15 @@ html[data-anim-ready] [data-anim].shown {
         grid-template-columns: 1fr;
         gap: 12px;
         max-width: 100%;
-        margin-bottom: 12px;
+        margin-bottom: 0;
         background: none;
         border: none;
         border-radius: 0;
         overflow: visible;
     }
 
-    .feat-grid:last-child {
-        margin-bottom: 0;
+    .feat-grid + .feat-grid {
+        margin-top: 12px;
     }
 
     .feat {
