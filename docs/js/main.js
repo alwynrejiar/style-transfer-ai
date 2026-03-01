@@ -29,6 +29,134 @@
     });
 })();
 
+/* ── FLOATING PARTICLES ── */
+(function initParticles() {
+    var canvas = document.getElementById('heroParticles');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var particles = [];
+    var count = 35;
+
+    function resize() {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    for (var i = 0; i < count; i++) {
+        particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            r: Math.random() * 2 + 0.5,
+            dx: (Math.random() - 0.5) * 0.4,
+            dy: (Math.random() - 0.5) * 0.4,
+            opacity: Math.random() * 0.18 + 0.04
+        });
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (var i = 0; i < particles.length; i++) {
+            var p = particles[i];
+            p.x += p.dx;
+            p.y += p.dy;
+            if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
+            if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(26,25,22,' + p.opacity + ')';
+            ctx.fill();
+        }
+        // connect nearby particles with lines
+        for (var i = 0; i < particles.length; i++) {
+            for (var j = i + 1; j < particles.length; j++) {
+                var dx = particles[i].x - particles[j].x;
+                var dy = particles[i].y - particles[j].y;
+                var dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 120) {
+                    ctx.beginPath();
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    ctx.strokeStyle = 'rgba(160,158,153,' + (0.08 * (1 - dist / 120)) + ')';
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                }
+            }
+        }
+        requestAnimationFrame(draw);
+    }
+    draw();
+})();
+
+/* ── PARALLAX BG CHARS ON MOUSE ── */
+(function initParallax() {
+    var char1 = document.querySelector('.bg-char-1');
+    var char2 = document.querySelector('.bg-char-2');
+    if (!char1 || !char2) return;
+
+    document.getElementById('home').addEventListener('mousemove', function (e) {
+        var rect = e.currentTarget.getBoundingClientRect();
+        var x = (e.clientX - rect.left) / rect.width - 0.5;
+        var y = (e.clientY - rect.top) / rect.height - 0.5;
+        char1.style.transform = 'translate(' + (x * -20) + 'px,' + (y * -15) + 'px)';
+        char2.style.transform = 'translate(' + (x * 15) + 'px,' + (y * 12) + 'px)';
+    });
+})();
+
+/* ── WORD-BY-WORD REVEAL ── */
+(function initWordReveal() {
+    var desc = document.querySelector('.hero-desc');
+    if (!desc) return;
+    var html = desc.innerHTML;
+    // wrap each text word in a span, preserving HTML tags
+    var result = '';
+    var inTag = false;
+    var wordIndex = 0;
+    var buffer = '';
+
+    function flushWord() {
+        if (buffer.trim()) {
+            result += '<span class="word" style="transition-delay:' + (wordIndex * 0.04) + 's">' + buffer + '</span> ';
+            wordIndex++;
+        } else if (buffer) {
+            result += buffer;
+        }
+        buffer = '';
+    }
+
+    for (var i = 0; i < html.length; i++) {
+        var ch = html[i];
+        if (ch === '<') {
+            flushWord();
+            inTag = true;
+            buffer += ch;
+        } else if (ch === '>') {
+            buffer += ch;
+            result += buffer;
+            buffer = '';
+            inTag = false;
+        } else if (inTag) {
+            buffer += ch;
+        } else if (ch === ' ' || ch === '\n') {
+            flushWord();
+        } else {
+            buffer += ch;
+        }
+    }
+    flushWord();
+
+    desc.innerHTML = result;
+
+    // trigger after a brief delay
+    setTimeout(function () {
+        var words = desc.querySelectorAll('.word');
+        words.forEach(function (w) {
+            w.classList.add('visible');
+        });
+    }, 700);
+})();
+
 /* ── SCROLL ANIMATIONS ── */
 (function initScrollAnimations() {
     document.documentElement.setAttribute('data-anim-ready', '');

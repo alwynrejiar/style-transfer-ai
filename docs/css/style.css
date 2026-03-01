@@ -137,7 +137,7 @@ nav {
 
 /* ── SECTIONS ── */
 section {
-    padding: calc(var(--nav-h) + 60px) 56px 80px;
+    padding: calc(var(--nav-h) + 40px) 56px 64px;
     scroll-margin-top: var(--nav-h);
 }
 
@@ -218,10 +218,18 @@ h2 {
     flex-direction: column;
     justify-content: center;
     padding-top: var(--nav-h);
-    padding-bottom: 60px;
+    padding-bottom: 40px;
     background: var(--white);
     position: relative;
     overflow: hidden;
+}
+
+/* floating particles canvas */
+.hero-particles {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
 }
 
 .bg-char {
@@ -232,12 +240,14 @@ h2 {
     user-select: none;
     line-height: 1;
     z-index: 0;
+    transition: transform 0.15s ease-out;
 }
 
 .bg-char-1 {
     font-size: 28vw;
     top: -5%;
     right: -4%;
+    animation: floatChar1 8s ease-in-out infinite;
 }
 
 .bg-char-2 {
@@ -246,6 +256,17 @@ h2 {
     left: -2%;
     font-style: italic;
     opacity: .6;
+    animation: floatChar2 10s ease-in-out infinite;
+}
+
+@keyframes floatChar1 {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    50% { transform: translate(-12px, 16px) rotate(2deg); }
+}
+
+@keyframes floatChar2 {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    50% { transform: translate(10px, -14px) rotate(-1.5deg); }
 }
 
 .hero-content {
@@ -323,16 +344,52 @@ h2 {
     flex-wrap: wrap;
 }
 
+/* shimmer on hero title */
 .hero-l2 em {
     font-style: italic;
     color: var(--muted);
+    position: relative;
+    background: linear-gradient(90deg, var(--muted) 0%, var(--ink) 50%, var(--muted) 100%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmerText 3s ease-in-out infinite;
+}
+
+@keyframes shimmerText {
+    0% { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+}
+
+/* CTA pulse glow */
+.hero-actions .btn-dark {
+    animation: ctaPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes ctaPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(26, 25, 22, 0.3); }
+    50% { box-shadow: 0 0 0 10px rgba(26, 25, 22, 0); }
+}
+
+/* word reveal for hero desc */
+.hero-desc .word {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.hero-desc .word.visible {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .hero-rule {
     width: 100%;
     height: 1px;
     background: var(--stone);
-    margin: 52px 0 44px;
+    margin: 32px 0 28px;
     transform: scaleX(0);
     transform-origin: left;
     animation: ruleGrow .8s cubic-bezier(.22, 1, .36, 1) .4s both;
@@ -1268,7 +1325,7 @@ html[data-anim-ready] [data-anim].shown {
     }
 
     section {
-        padding: calc(var(--nav-h) + 60px) 24px 80px;
+        padding: calc(var(--nav-h) + 36px) 24px 56px;
     }
 
     .divider {
