@@ -1229,6 +1229,32 @@ h2 {
     min-height: 120px;
 }
 
+.form button:disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.form-status {
+    display: none;
+    font-size: 0.85rem;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-top: 4px;
+    font-weight: 400;
+}
+
+.form-status.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+}
+
+.form-status.error {
+    background: #fce4ec;
+    color: #c62828;
+    border: 1px solid #ef9a9a;
+}
+
 /* ── FOOTER ── */
 footer {
     border-top: 1px solid var(--stone);

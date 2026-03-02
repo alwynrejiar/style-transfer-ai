@@ -288,3 +288,63 @@
         });
     });
 })();
+
+/* ── CONTACT FORM SUBMISSION ── */
+(function initContactForm() {
+    var form = document.getElementById('contactForm');
+    if (!form) return;
+
+    var btn = document.getElementById('contactBtn');
+    var status = document.getElementById('formStatus');
+    var originalText = btn.textContent;
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        // Validate
+        var name = form.querySelector('input[name="name"]');
+        var email = form.querySelector('input[name="email"]');
+        var message = form.querySelector('textarea[name="message"]');
+
+        if (!name.value.trim() || !email.value.trim() || !message.value.trim()) {
+            showStatus('Please fill in all fields.', 'error');
+            return;
+        }
+
+        // Disable button
+        btn.disabled = true;
+        btn.textContent = 'Sending…';
+
+        var formData = new FormData(form);
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(function (response) {
+            if (response.ok) {
+                showStatus('Message sent! We\'ll get back to you soon.', 'success');
+                form.reset();
+            } else {
+                throw new Error('Server error');
+            }
+        })
+        .catch(function () {
+            showStatus('Something went wrong. Please try again or email us directly.', 'error');
+        })
+        .finally(function () {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        });
+    });
+
+    function showStatus(msg, type) {
+        status.textContent = msg;
+        status.className = 'form-status ' + type;
+        status.style.display = 'block';
+        setTimeout(function () {
+            status.style.display = 'none';
+        }, 6000);
+    }
+})();

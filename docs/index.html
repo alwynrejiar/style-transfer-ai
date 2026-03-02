@@ -306,11 +306,20 @@
                 </div>
             </div>
             <div data-anim="right">
-                <form class="form" onsubmit="return false">
-                    <div><label>Name</label><input type="text" placeholder="Your name" /></div>
-                    <div><label>Email</label><input type="email" placeholder="you@example.com" /></div>
-                    <div><label>Message</label><textarea placeholder="Write your message…"></textarea></div>
-                    <button class="btn btn-dark" type="submit">Send message →</button>
+                <form class="form" id="contactForm"
+                      action="https://formsubmit.co/stylomex.ai@gmail.com" method="POST">
+                    <!-- FormSubmit config -->
+                    <input type="hidden" name="_subject" value="New message from Stylomex.AI website">
+                    <input type="hidden" name="_captcha" value="false">
+                    <input type="hidden" name="_template" value="table">
+                    <input type="hidden" name="_next" value="https://stylomex.live/#contact">
+                    <input type="text" name="_honey" style="display:none">
+
+                    <div><label>Name</label><input type="text" name="name" placeholder="Your name" required /></div>
+                    <div><label>Email</label><input type="email" name="email" placeholder="you@example.com" required /></div>
+                    <div><label>Message</label><textarea name="message" placeholder="Write your message…" required></textarea></div>
+                    <button class="btn btn-dark" type="submit" id="contactBtn">Send message →</button>
+                    <div id="formStatus" class="form-status"></div>
                 </form>
             </div>
         </div>
