@@ -4,7 +4,7 @@ Handles interactive model selection and validation.
 """
 
 from ..config.settings import AVAILABLE_MODELS, OLLAMA_BASE_URL, PROCESSING_MODES
-from ..models.ollama_client import check_ollama_connection, pull_ollama_model, list_ollama_models
+from ..models.ollama_client import check_ollama_connection, pull_ollama_model
 from ..models.openai_client import setup_openai_client, get_api_key as get_openai_api_key
 from ..models.gemini_client import setup_gemini_client, get_api_key as get_gemini_api_key
 from ..models.remote_ollama_client import (
@@ -42,45 +42,8 @@ def display_model_menu():
         print(f"   Type: {model_info['type']}")
         print()
     
-    print("C. Choose from installed Ollama models")
     print("0. Exit model selection")
     print("="*60)
-
-
-def select_installed_ollama_model():
-    """Select from locally installed Ollama models."""
-    global USE_LOCAL_MODEL, SELECTED_MODEL
-
-    models, error = list_ollama_models()
-    if error:
-        print(f"\nΓ£ù {error}")
-        return False
-    if not models:
-        print("\nNo Ollama models found. Download one from the model menu first.")
-        return False
-
-    print("\nInstalled Ollama Models:")
-    for idx, model in enumerate(models, 1):
-        print(f"{idx}. {model}")
-    print("0. Cancel")
-
-    choice = input("\nSelect a model (0 to cancel): ").strip()
-    if choice == "0":
-        return False
-
-    try:
-        model_index = int(choice) - 1
-        if 0 <= model_index < len(models):
-            selected_model = models[model_index]
-            USE_LOCAL_MODEL = True
-            SELECTED_MODEL = selected_model
-            print(f"\nΓ£ô Model set to: {selected_model}")
-            return True
-        print("Invalid selection. Please try again.")
-        return False
-    except ValueError:
-        print("Invalid input. Please enter a number.")
-        return False
 
 
 def validate_model_selection(model_key):
@@ -220,14 +183,6 @@ def select_model_interactive():
             if choice == "0":
                 break
 
-            if choice.lower() == "c":
-                if select_installed_ollama_model():
-                    show_processing_modes()
-                    input("Press Enter to continue...")
-                    break
-                input("Press Enter to continue...")
-                continue
-            
             try:
                 model_index = int(choice) - 1
                 model_keys = list(AVAILABLE_MODELS.keys())
