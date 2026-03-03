@@ -1,4 +1,4 @@
-"""
+﻿"""
 Text processing utilities for Style Transfer AI.
 Handles file reading, text sanitization, and basic text operations.
 """

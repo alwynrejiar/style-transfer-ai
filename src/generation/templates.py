@@ -1,4 +1,4 @@
-"""
+﻿"""
 Content templates and prompt management for Style Transfer AI generation.
 Provides structured templates for different content types and generation scenarios.
 """

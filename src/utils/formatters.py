@@ -1,4 +1,4 @@
-"""
+﻿"""
 Output formatting utilities for Style Transfer AI.
 Handles JSON and human-readable text report generation.
 """
@@ -78,7 +78,7 @@ def format_human_readable_output(style_profile):
         output_lines.append("SOURCE FILES")
         output_lines.append("-" * 40)
         for file_info in style_profile['metadata']['file_info']:
-            output_lines.append(f"• {file_info['filename']}: {file_info['word_count']} words, {file_info['character_count']} characters")
+            output_lines.append(f"ΓÇó {file_info['filename']}: {file_info['word_count']} words, {file_info['character_count']} characters")
         output_lines.append("")
     
     # Statistical analysis
@@ -99,7 +99,7 @@ def format_human_readable_output(style_profile):
             output_lines.append("-" * 25)
             punct = stats['punctuation_counts']
             for punct_type, count in punct.items():
-                output_lines.append(f"• {punct_type.capitalize()}: {count}")
+                output_lines.append(f"ΓÇó {punct_type.capitalize()}: {count}")
             output_lines.append("")
         
         # Most frequent words
@@ -107,7 +107,7 @@ def format_human_readable_output(style_profile):
             output_lines.append("MOST FREQUENT WORDS")
             output_lines.append("-" * 25)
             for word, freq in list(stats['word_frequency'].items())[:10]:
-                output_lines.append(f"• '{word}': {freq} times")
+                output_lines.append(f"ΓÇó '{word}': {freq} times")
             output_lines.append("")
     
     # Readability metrics
@@ -126,19 +126,15 @@ def format_human_readable_output(style_profile):
         output_lines.append("INDIVIDUAL FILE ANALYSES")
         output_lines.append("=" * 50)
         for i, analysis in enumerate(style_profile['individual_analyses'], 1):
-            output_lines.append(f"\nFILE {i}: {analysis.get('filename', 'unknown')}")
-            output_lines.append("-" * (10 + len(analysis.get('filename', 'unknown'))))
-            if 'character_count' in analysis:
-                output_lines.append(f"Character Count: {analysis['character_count']}")
-            if 'word_count' in analysis:
-                output_lines.append(f"Word Count: {analysis['word_count']}")
+            output_lines.append(f"\nFILE {i}: {analysis['filename']}")
+            output_lines.append("-" * (10 + len(analysis['filename'])))
+            output_lines.append(f"Character Count: {analysis['character_count']}")
+            output_lines.append(f"Word Count: {analysis['word_count']}")
             output_lines.append("")
             output_lines.append("STYLOMETRIC ANALYSIS:")
-            # Handle both string (legacy) and dict (v3.0) analysis formats
-            raw = analysis.get('analysis', '')
-            if isinstance(raw, dict):
-                raw = json.dumps(raw, indent=2, ensure_ascii=False)
-            for line in raw.split('\n'):
+            # Add the analysis content with proper formatting
+            analysis_lines = analysis['analysis'].split('\n')
+            for line in analysis_lines:
                 if line.strip():
                     output_lines.append(f"  {line}")
             output_lines.append("")
@@ -147,11 +143,9 @@ def format_human_readable_output(style_profile):
     if 'consolidated_analysis' in style_profile:
         output_lines.append("CONSOLIDATED STYLOMETRIC PROFILE")
         output_lines.append("=" * 50)
-        # Handle both string (legacy) and dict (v3.0) analysis formats
-        consolidated = style_profile['consolidated_analysis']
-        if isinstance(consolidated, dict):
-            consolidated = json.dumps(consolidated, indent=2, ensure_ascii=False)
-        for line in consolidated.split('\n'):
+        # Add the consolidated analysis content with proper formatting
+        analysis_lines = style_profile['consolidated_analysis'].split('\n')
+        for line in analysis_lines:
             if line.strip():
                 output_lines.append(line)
         output_lines.append("")
@@ -162,10 +156,10 @@ def format_human_readable_output(style_profile):
     output_lines.append("This comprehensive analysis provides quantitative and qualitative")
     output_lines.append("insights into your unique writing style. The statistical measures")
     output_lines.append("can be used for:")
-    output_lines.append("• AI text generation that matches your style")
-    output_lines.append("• Writing consistency analysis")
-    output_lines.append("• Style evolution tracking over time")
-    output_lines.append("• Comparative stylometric studies")
+    output_lines.append("ΓÇó AI text generation that matches your style")
+    output_lines.append("ΓÇó Writing consistency analysis")
+    output_lines.append("ΓÇó Style evolution tracking over time")
+    output_lines.append("ΓÇó Comparative stylometric studies")
     output_lines.append("")
     
     # Footer

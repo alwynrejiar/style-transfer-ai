@@ -69,6 +69,6 @@ generated content/
 stylometry fingerprints/
 
 # Model Files (if downloading locally)
-models/
+/models/
 *.bin
 *.safetensors

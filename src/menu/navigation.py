@@ -1,4 +1,4 @@
-"""
+﻿"""
 Navigation utilities for Style Transfer AI.
 Handles common navigation patterns and user interactions.
 """
@@ -127,7 +127,7 @@ def display_loading_animation(message="Processing", duration=2):
             print(f"\r{message} {char}", end="", flush=True)
             time.sleep(0.1)
     
-    print(f"\r{message} ✓")
+    print(f"\r{message} Γ£ô")
 
 
 def pause_for_user(message="Press Enter to continue..."):
@@ -234,7 +234,7 @@ def display_progress_bar(current, total, width=50, title="Progress"):
     
     percentage = (current / total) * 100
     filled_width = int(width * current // total)
-    bar = "█" * filled_width + "-" * (width - filled_width)
+    bar = "Γûê" * filled_width + "-" * (width - filled_width)
     
     print(f"\r{title}: |{bar}| {percentage:.1f}% ({current}/{total})", end="", flush=True)
     
@@ -300,9 +300,9 @@ def get_file_paths_interactive(prompt="Enter file paths (one per line, empty lin
             
             if validate_file_path(path):
                 file_paths.append(path)
-                print(f"✓ Added: {os.path.basename(path)}")
+                print(f"Γ£ô Added: {os.path.basename(path)}")
             else:
-                print(f"✗ Invalid or inaccessible file: {path}")
+                print(f"Γ£ù Invalid or inaccessible file: {path}")
                 retry = confirm_action("Try again?", default='y')
                 if not retry:
                     break

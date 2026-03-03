@@ -1,4 +1,4 @@
-"""
+﻿"""
 Main orchestrator for Style Transfer AI.
 Integrates all modules and provides the primary application entry point.
 """
@@ -25,11 +25,11 @@ def display_startup_banner():
     print("="*70)
     print()
     print("Features:")
-    print("• 25-point deep stylometry analysis")
-    print("• Multi-model support (Ollama, OpenAI, Gemini)")
-    print("• Statistical readability metrics")
-    print("• Privacy-first local processing")
-    print("• Comprehensive style profiling")
+    print("ΓÇó 25-point deep stylometry analysis")
+    print("ΓÇó Multi-model support (Ollama, OpenAI, Gemini)")
+    print("ΓÇó Statistical readability metrics")
+    print("ΓÇó Privacy-first local processing")
+    print("ΓÇó Comprehensive style profiling")
     print()
 
 
@@ -54,7 +54,7 @@ def check_system_requirements():
     
     # Check Python version with confirmation
     if sys.version_info >= (3, 7):
-        print(f"✅ Python version: {sys.version.split()[0]}")
+        print(f"Γ£à Python version: {sys.version.split()[0]}")
     
     # Check for required dependencies
     required_deps = {
@@ -64,7 +64,7 @@ def check_system_requirements():
     for dep, description in required_deps.items():
         try:
             __import__(dep)
-            print(f"✅ {dep}: Available")
+            print(f"Γ£à {dep}: Available")
         except ImportError:
             issues.append(f"Required dependency '{dep}' not installed - {description}")
     
@@ -77,7 +77,7 @@ def check_system_requirements():
     for dep, description in optional_deps.items():
         try:
             __import__(dep)
-            print(f"✅ {dep}: Available")
+            print(f"Γ£à {dep}: Available")
         except ImportError:
             warnings.append(f"Optional dependency '{dep}' not installed - {description}")
             if dep == 'openai':
@@ -99,17 +99,17 @@ def check_system_requirements():
         if not os.path.exists(directory):
             issues.append(f"Required directory missing: {directory}")
         else:
-            print(f"✅ Directory: {directory}")
+            print(f"Γ£à Directory: {directory}")
     
     # Check for Ollama connection (optional)
     try:
         import requests
         response = requests.get("http://localhost:11434/api/tags", timeout=2)
         if response.status_code == 200:
-            print("✅ Ollama server: Running")
+            print("Γ£à Ollama server: Running")
             models = response.json().get('models', [])
             if models:
-                print(f"✅ Available models: {len(models)} found")
+                print(f"Γ£à Available models: {len(models)} found")
             else:
                 warnings.append("No Ollama models found. Run 'ollama pull gpt-oss:20b' or 'ollama pull gemma3:1b'")
         else:
@@ -139,23 +139,23 @@ def initialize_application():
     system_check = check_system_requirements()
     
     if not system_check['success']:
-        print("\n❌ CRITICAL ISSUES FOUND:")
+        print("\nΓ¥î CRITICAL ISSUES FOUND:")
         for issue in system_check['issues']:
-            print(f"  • {issue}")
+            print(f"  ΓÇó {issue}")
         print("\nPlease resolve these issues before continuing.")
         return False
     
     if system_check['warnings']:
-        print("\n⚠️  WARNINGS:")
+        print("\nΓÜá∩╕Å  WARNINGS:")
         for warning in system_check['warnings']:
-            print(f"  • {warning}")
+            print(f"  ΓÇó {warning}")
         print("\nSome features may not be available.")
     
     # Initialize model configuration
     print("\nInitializing model configuration...")
-    print("⚠️  Model selection will be required before analysis.")
+    print("ΓÜá∩╕Å  Model selection will be required before analysis.")
     
-    print("\n✓ Application initialized successfully!")
+    print("\nΓ£ô Application initialized successfully!")
     return True
 
 
@@ -165,21 +165,21 @@ def show_quick_start_guide():
     print("QUICK START GUIDE")
     print("="*60)
     print("1. Manage or select a model (Menu options 8-9)")
-    print("   • Download Ollama models in option 8 if needed")
-    print("   • API models (OpenAI/Gemini) require internet and API keys")
+    print("   ΓÇó Download Ollama models in option 8 if needed")
+    print("   ΓÇó API models (OpenAI/Gemini) require internet and API keys")
     print()
     print("2. Prepare your writing samples")
-    print("   • Gather 2-5 text files with your writing")
-    print("   • Files should be at least 500 words each")
-    print("   • Plain text (.txt) format works best")
+    print("   ΓÇó Gather 2-5 text files with your writing")
+    print("   ΓÇó Files should be at least 500 words each")
+    print("   ΓÇó Plain text (.txt) format works best")
     print()
     print("3. Run analysis (Menu option 1)")
-    print("   • Choose 'Enhanced' for complete 25-point analysis")
-    print("   • Choose 'Statistical' for quick readability metrics")
+    print("   ΓÇó Choose 'Enhanced' for complete 25-point analysis")
+    print("   ΓÇó Choose 'Statistical' for quick readability metrics")
     print()
     print("4. View and manage results")
-    print("   • Results saved locally and optionally to cloud")
-    print("   • Use menu options 3-6 to manage profiles")
+    print("   ΓÇó Results saved locally and optionally to cloud")
+    print("   ΓÇó Use menu options 3-6 to manage profiles")
     print("="*60)
 
 
@@ -211,7 +211,7 @@ def main():
         sys.exit(0)
         
     except Exception as e:
-        print(f"\n❌ FATAL ERROR: {e}")
+        print(f"\nΓ¥î FATAL ERROR: {e}")
         print("\nPlease report this error to the development team.")
         print(f"Error details: {type(e).__name__}: {e}")
         sys.exit(1)

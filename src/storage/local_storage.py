@@ -1,4 +1,4 @@
-"""
+﻿"""
 Local file storage module for Style Transfer AI.
 Handles saving and loading of analysis results to local files.
 """
@@ -35,7 +35,7 @@ def save_style_profile_locally(style_profile, base_filename="user_style_profile_
             'success': True,
             'json_file': json_filename,
             'txt_file': txt_filename,
-            'message': f"Personal stylometric profile saved locally for {user_name}:\n• JSON: {json_filename}\n• TXT: {txt_filename}"
+            'message': f"Personal stylometric profile saved locally for {user_name}:\nΓÇó JSON: {json_filename}\nΓÇó TXT: {txt_filename}"
         }
         
     except Exception as e:

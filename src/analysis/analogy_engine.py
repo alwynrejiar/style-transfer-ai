@@ -1,4 +1,4 @@
-"""
+﻿"""
 Analogy Engine for Style Transfer AI.
 
 Provides the ``AnalogyInjector`` service that detects conceptually dense
@@ -10,7 +10,7 @@ any style-transfer / analysis result (hybrid mode).
 Key design rule
 ---------------
 When both a primary style transfer AND analogy augmentation are active,
-the analogies are injected in clearly delimited ``[Cognitive Note: …]``
+the analogies are injected in clearly delimited ``[Cognitive Note: ΓÇª]``
 blocks so they *never* corrupt the primary style output.
 """
 
@@ -29,25 +29,25 @@ from ..utils.text_processing import count_syllables
 
 
 # ---------------------------------------------------------------------------
-# Conceptual density detection (pure computation — no LLM needed)
+# Conceptual density detection (pure computation ΓÇö no LLM needed)
 # ---------------------------------------------------------------------------
 
 def detect_conceptual_density(text: str) -> Dict:
     """Scan *text* and return per-sentence density scores plus an overall score.
 
     Density is a heuristic composite of:
-    * **Lexical density** — ratio of content words (nouns, verbs, adjectives,
+    * **Lexical density** ΓÇö ratio of content words (nouns, verbs, adjectives,
       adverbs approximation) to total words.
-    * **Syllabic complexity** — average syllables per word.
-    * **Information density** — unique-word ratio within the sentence.
-    * **Sentence length factor** — longer sentences carry more cognitive load.
+    * **Syllabic complexity** ΓÇö average syllables per word.
+    * **Information density** ΓÇö unique-word ratio within the sentence.
+    * **Sentence length factor** ΓÇö longer sentences carry more cognitive load.
 
     Returns
     -------
     dict
         ``overall_density``  : float 0-1 (mean across sentences)
         ``sentence_scores``  : list[dict] with ``text``, ``density``, ``factors``
-        ``high_density_count``: int — sentences above the configured threshold
+        ``high_density_count``: int ΓÇö sentences above the configured threshold
     """
     if not text or not text.strip():
         return {
@@ -128,11 +128,11 @@ class AnalogyInjector:
         """Analyse *text* for density and inject analogies where needed.
 
         Returns a dict with:
-        * ``augmented_text``   — the original text with ``[Cognitive Note: …]``
+        * ``augmented_text``   ΓÇö the original text with ``[Cognitive Note: ΓÇª]``
           blocks inserted after each high-density sentence.
-        * ``density_report``   — full output of ``detect_conceptual_density``.
-        * ``analogies``        — list of generated analogies with metadata.
-        * ``analogy_count``    — how many analogies were injected.
+        * ``density_report``   ΓÇö full output of ``detect_conceptual_density``.
+        * ``analogies``        ΓÇö list of generated analogies with metadata.
+        * ``analogy_count``    ΓÇö how many analogies were injected.
         """
         density_report = detect_conceptual_density(text)
         dense_sentences = [
@@ -236,7 +236,7 @@ class AnalogyInjector:
             "concepts that may be abstract, technical, or difficult to understand.\n\n"
             "Rules:\n"
             "- Generate a simple, accurate real-world analogy for each concept.\n"
-            "- Preserve the original meaning — do not distort technical correctness.\n"
+            "- Preserve the original meaning ΓÇö do not distort technical correctness.\n"
             "- Keep explanations concise and structured.\n"
             "- Add a practical example when it helps understanding.\n"
             "- Do NOT replace the original explanation; supplement it.\n"
@@ -295,14 +295,14 @@ class AnalogyInjector:
 
         Supports two formats:
         - Simple:     ``1. <text>``
-        - Structured: ``1. Concept: … / Analogy: … / Example: …``
+        - Structured: ``1. Concept: ΓÇª / Analogy: ΓÇª / Example: ΓÇª``
         """
         analogies: List[Dict] = []
 
-        # Split into numbered blocks ("1. …", "2. …", etc.)
+        # Split into numbered blocks ("1. ΓÇª", "2. ΓÇª", etc.)
         block_pattern = re.compile(r"(?:^|\n)\s*(\d+)\.\s*", re.MULTILINE)
         splits = block_pattern.split(raw)
-        # splits looks like ["", "1", "block1 text", "2", "block2 text", …]
+        # splits looks like ["", "1", "block1 text", "2", "block2 text", ΓÇª]
         block_map: Dict[int, str] = {}
         idx = 1
         while idx < len(splits) - 1:
@@ -354,7 +354,7 @@ class AnalogyInjector:
 
     @staticmethod
     def _inject_analogies(text: str, analogies: List[Dict]) -> str:
-        """Insert ``[Cognitive Note: …]`` blocks after each source sentence."""
+        """Insert ``[Cognitive Note: ΓÇª]`` blocks after each source sentence."""
         result = text
         for item in reversed(analogies):  # reverse to preserve offsets
             src = item["source_sentence"]
@@ -405,7 +405,7 @@ class AnalogyInjector:
 
 _SENTENCE_SPLIT_RE = re.compile(r'(?<=[.!?])\s+')
 
-# Approximate "content word" detection without spaCy — we exclude the most
+# Approximate "content word" detection without spaCy ΓÇö we exclude the most
 # common English function words.
 _FUNCTION_WORDS = frozenset({
     "the", "a", "an", "and", "or", "but", "if", "is", "are", "was", "were",
@@ -446,7 +446,7 @@ def _score_sentence(sentence: str) -> Tuple[float, Dict]:
     # --- Factor 2: Syllabic complexity ---
     total_syllables = sum(count_syllables(w) for w in alpha_words) if alpha_words else 0
     avg_syllables = total_syllables / len(alpha_words) if alpha_words else 1.0
-    # Normalise: 1 syll → 0, 4+ syll → 1
+    # Normalise: 1 syll ΓåÆ 0, 4+ syll ΓåÆ 1
     syllable_factor = min(1.0, max(0.0, (avg_syllables - 1.0) / 3.0))
 
     # --- Factor 3: Information density (unique ratio within sentence) ---
@@ -454,7 +454,7 @@ def _score_sentence(sentence: str) -> Tuple[float, Dict]:
 
     # --- Factor 4: Length factor ---
     # Short sentences are rarely "dense"; long ones carry more load.
-    # Normalise: <=5 words → 0, >=30 words → 1
+    # Normalise: <=5 words ΓåÆ 0, >=30 words ΓåÆ 1
     length_factor = min(1.0, max(0.0, (word_count - 5) / 25.0))
 
     # Weighted composite
