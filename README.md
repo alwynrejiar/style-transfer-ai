@@ -61,14 +61,13 @@ python scripts/run_gui.py        # Desktop GUI
 - **Safe filename handling**: Automatic sanitization for filesystem compatibility
 
 ✅ **Performance Optimization**:
-- **Multi-model support**: Local Ollama + Cloud APIs (OpenAI, Gemini)
+- **Multi-model support**: Local Ollama models (privacy-first)
 - **Intelligent processing**: Statistical-only or full deep analysis modes
 - **Resource-aware processing**: Optimized for different analysis depths
 - **One-line installation**: Complete setup with single PowerShell command
 
 ✅ **Hierarchical Model Selection**:
 - **Local Processing**: Ollama models (privacy-first, free)
-- **Cloud Processing**: OpenAI GPT-3.5-turbo, Google Gemini-1.5-flash
 - **Automatic fallback**: Graceful degradation when models unavailable
 - **Intuitive navigation**: Main menu → Sub-menus with back navigation
 - **Professional interface**: Clean, emoji-free design for serious analysis
@@ -131,22 +130,11 @@ $p="$env:APPDATA\Python\Python313\Scripts";$c=[Environment]::GetEnvironmentVaria
 ```bash
 # Install Ollama from https://ollama.ai/download
 # Then pull the models:
-ollama pull gpt-oss:20b      # Advanced model
 ollama pull gemma3:1b        # Fast model
 
 # Start Ollama server
 ollama serve
 ```
-
-### 3. Optional: Cloud APIs (If Needed)
-
-#### OpenAI API (Optional)
-- Get your API key from [OpenAI Platform](https://platform.openai.com/api-keys)
-- Enter when prompted by the application
-
-#### Google Gemini API (Optional)
-- Get your API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
-- Enter when prompted by the application
 
 ### 4. Run Analysis
 ```bash
@@ -220,7 +208,7 @@ style-transfer-ai --analyze sample.txt
 style-transfer-ai --analyze file1.txt file2.txt file3.txt
 
 # Analyze with specific model
-style-transfer-ai --analyze sample.txt --model gpt-oss:20b
+style-transfer-ai --analyze sample.txt --model gemma3:1b
 
 # Force local processing
 style-transfer-ai --analyze sample.txt --local
@@ -241,9 +229,8 @@ style-transfer-ai --analyze sample.txt --output "my_analysis"
 |--------|-------------|---------|
 | `--interactive` | Run in interactive menu mode (default) | `style-transfer-ai --interactive` |
 | `--analyze FILE [FILE ...]` | Analyze one or more text files | `style-transfer-ai --analyze text1.txt text2.txt` |
-| `--model MODEL` | Specify model (gpt-oss:20b, gemma3:1b, openai, gemini) | `style-transfer-ai --analyze file.txt --model gemma3:1b` |
+| `--model MODEL` | Specify model (gemma3:1b, remote-ollama) | `style-transfer-ai --analyze file.txt --model gemma3:1b` |
 | `--local` | Force use of local Ollama models | `style-transfer-ai --analyze file.txt --local` |
-| `--cloud` | Force use of cloud models (OpenAI/Gemini) | `style-transfer-ai --analyze file.txt --cloud` |
 | `--output NAME` | Base name for output files (no extension) | `style-transfer-ai --analyze file.txt --output my_profile` |
 | `--help` | Show help message and exit | `style-transfer-ai --help` |
 
@@ -282,7 +269,6 @@ style-transfer-ai --analyze sensitive.txt --local
 #### Development & Testing
 ```bash
 # Test different models on same content
-style-transfer-ai --analyze test.txt --model gpt-oss:20b --output "test_advanced"
 style-transfer-ai --analyze test.txt --model gemma3:1b --output "test_fast"
 ```
 
@@ -346,15 +332,10 @@ The analyzer features a **hierarchical menu system** for intuitive model selecti
 
 **Main Menu:**
 1. **Local Processing** (Privacy-focused)
-2. **Online Processing** (Cloud-based)
 
 **Local Models Sub-menu:**
-- **GPT-OSS 20B** - Advanced comprehensive analysis
 - **Gemma 3:1B** - Fast efficient processing
-
-**Online Models Sub-menu:**
-- **OpenAI GPT-3.5-turbo** - Cloud-based analysis
-- **Google Gemini-1.5-flash** - Google's latest language model
+- **Remote Ollama** - Via tunnel connection
 
 **Navigation:** Use '0' to go back to the previous menu or exit the application.
 
@@ -576,20 +557,8 @@ ollama serve
 ollama list
 
 # Pull missing models
-ollama pull gpt-oss:20b
 ollama pull gemma3:1b
 ```
-
-**GPT-OSS Performance Issues**:
-- Try **Turbo Mode** for faster processing
-- Switch to **Normal Mode** for detailed analysis
-- Check system resources during processing
-- Verify model is fully loaded in Ollama
-
-**OpenAI API Errors**:
-- Check API key validity
-- Verify account has sufficient credits
-- Ensure proper key format (starts with 'sk-')
 
 **File Naming Issues**:
 - Special characters in names are automatically sanitized

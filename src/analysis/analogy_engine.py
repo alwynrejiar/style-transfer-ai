@@ -271,17 +271,11 @@ class AnalogyInjector:
     ) -> str:
         """Route the prompt to the correct model backend (lazy imports)."""
         from ..models.ollama_client import analyze_with_ollama
-        from ..models.openai_client import analyze_with_openai
-        from ..models.gemini_client import analyze_with_gemini
 
         if use_local:
             if not model_name:
                 raise ValueError("model_name required for local Ollama inference")
             return analyze_with_ollama(prompt, model_name, "enhanced")
-        elif api_type == "openai":
-            return analyze_with_openai(api_client, prompt)
-        elif api_type == "gemini":
-            return analyze_with_gemini(api_client, prompt)
         else:
             return "Error: Unknown API type for analogy generation"
 

@@ -111,7 +111,7 @@ def check_system_requirements():
             if models:
                 print(f"Γ£à Available models: {len(models)} found")
             else:
-                warnings.append("No Ollama models found. Run 'ollama pull gpt-oss:20b' or 'ollama pull gemma3:1b'")
+                warnings.append("No Ollama models found. Run 'ollama pull gemma3:1b'")
         else:
             warnings.append("Ollama server not responding properly")
     except:

@@ -15,27 +15,10 @@ def show():
     ollama_url = st.text_input("Ollama Base URL", value="http://localhost:11434")
     local_model = st.selectbox(
         "Default Local Model", 
-        ["gemma3:1b", "gpt-oss:20b", "llama3", "mistral"],
+        ["gemma3:1b", "llama3", "mistral"],
         index=0
     )
     
-    st.markdown("---")
-    
-    # Cloud API Settings
-    st.markdown("#### Cloud APIs (Optional)")
-    
-    with st.expander("OpenAI Configuration"):
-        openai_key = st.text_input("OpenAI API Key", type="password")
-        if openai_key:
-            os.environ["OPENAI_API_KEY"] = openai_key
-            st.success("Key temporarily set for this session")
-            
-    with st.expander("Google Gemini Configuration"):
-        gemini_key = st.text_input("Gemini API Key", type="password")
-        if gemini_key:
-            os.environ["GEMINI_API_KEY"] = gemini_key
-            st.success("Key temporarily set for this session")
-            
     st.markdown("---")
     
     if st.button("Save Configuration"):

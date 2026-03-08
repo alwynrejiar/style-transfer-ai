@@ -35,14 +35,10 @@ def show():
     
     col1, col2 = st.columns(2)
     with col1:
-        # For now hardcoding to local Ollama as per preference
-        model_type = st.selectbox("Model Type", ["Local (Ollama)", "Cloud (OpenAI/Gemini)"])
+        model_type = st.selectbox("Model Type", ["Local (Ollama)"])
     
     with col2:
-        if "Local" in model_type:
-            model_name = st.text_input("Model Name", value="gemma3:1b")
-        else:
-            model_name = st.text_input("Model Name", value="gpt-4", disabled=True)
+        model_name = st.text_input("Model Name", value="gemma3:1b")
 
     # --- Cognitive Load Optimization ---
     st.subheader("3. Cognitive Load Optimization")

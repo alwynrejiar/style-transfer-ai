@@ -63,7 +63,7 @@ a = Analysis(
         "src.analysis", "src.analysis.analyzer", "src.analysis.metrics",
         "src.generation", "src.generation.content_generator", "src.generation.style_transfer",
         "src.storage", "src.storage.local_storage",
-        "src.models", "src.models.ollama_client", "src.models.openai_client", "src.models.gemini_client",
+        "src.models", "src.models.ollama_client", "src.models.remote_ollama_client",
         "src.menu", "src.menu.main_menu", "src.menu.model_selection", "src.menu.navigation",
         "src.utils",
 

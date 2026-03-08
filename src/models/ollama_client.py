@@ -119,15 +119,12 @@ def analyze_with_ollama(
     timeout = mode.get("timeout", 180)
 
     # Token limit depends on model family
-    if "gpt-oss" in model_name:
-        num_predict = mode.get("gpt_oss_tokens", 3000)
-    else:
-        num_predict = mode.get("gemma_tokens", 2000)
+    num_predict = mode.get("gemma_tokens", 2000)
 
     payload = {
         "model": model_name,
         "prompt": prompt,
-        "stream": False,
+        "stream": True,  # Enable streaming for progress feedback
         "options": {
             "temperature": temperature,
             "num_predict": num_predict,
@@ -135,14 +132,51 @@ def analyze_with_ollama(
     }
 
     try:
+        import sys
         r = requests.post(
             f"{OLLAMA_BASE_URL}/api/generate",
             json=payload,
-            timeout=timeout,
+            stream=True,
+            timeout=(10, timeout),  # (connect_timeout, read_timeout per chunk)
         )
         if r.status_code != 200:
             raise RuntimeError(f"Ollama returned status {r.status_code}: {r.text[:300]}")
-        return r.json().get("response", "")
+        
+        # Stream response with progress dots and total time limit
+        full_response = ""
+        dot_count = 0
+        start_time = time.time()
+        max_total_time = timeout * 1.5  # Hard ceiling: 1.5x the per-chunk timeout
+        
+        for line in r.iter_lines():
+            # Enforce total time limit (streaming timeout doesn't cover this)
+            elapsed = time.time() - start_time
+            if elapsed > max_total_time:
+                print(f" [timeout after {int(elapsed)}s]", end="", flush=True)
+                r.close()
+                break
+            
+            if line:
+                try:
+                    chunk = json.loads(line)
+                    if chunk.get("response"):
+                        full_response += chunk["response"]
+                        # Show progress dot every 10 tokens
+                        dot_count += 1
+                        if dot_count % 10 == 0:
+                            print(".", end="", flush=True)
+                    if chunk.get("done"):
+                        break
+                except json.JSONDecodeError:
+                    continue
+        
+        elapsed = time.time() - start_time
+        print(f" [{int(elapsed)}s]", end="", flush=True)
+        
+        if not full_response.strip():
+            raise RuntimeError("Ollama returned an empty response")
+        
+        return full_response
     except requests.exceptions.Timeout:
         raise RuntimeError(f"Ollama request timed out after {timeout}s")
     except requests.exceptions.ConnectionError:

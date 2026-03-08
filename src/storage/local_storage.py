@@ -136,6 +136,38 @@ def list_local_profiles(pattern="*_stylometric_profile_*.json"):
         return []
 
 
+def delete_profile(filepath):
+    """
+    Delete a style profile and its companion file (JSON+TXT pair).
+
+    Args:
+        filepath (str): Path to either the .json or .txt profile file.
+
+    Returns:
+        dict: Result with 'success', 'deleted' list, and 'message' or 'error'.
+    """
+    deleted = []
+    try:
+        base, ext = os.path.splitext(filepath)
+        pair = [base + ".json", base + ".txt"]
+        for path in pair:
+            if os.path.isfile(path):
+                os.remove(path)
+                deleted.append(os.path.basename(path))
+        if deleted:
+            return {
+                "success": True,
+                "deleted": deleted,
+                "message": f"Deleted: {', '.join(deleted)}",
+            }
+        return {
+            "success": False,
+            "error": f"No profile files found for {os.path.basename(filepath)}",
+        }
+    except Exception as e:
+        return {"success": False, "error": f"Error deleting profile: {e}"}
+
+
 def load_local_profile(filename):
     """
     Load a local profile file.

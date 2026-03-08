@@ -11,15 +11,11 @@ AUTHOR = "Style Transfer AI Team"
 # API Configuration
 OLLAMA_BASE_URL = "http://localhost:11434"
 REMOTE_OLLAMA_DEFAULT_URL = "https://myollamaapi2000.share.zrok.io"
-OPENAI_API_KEY = "your-openai-api-key-here"  # Replace with your actual OpenAI API key
-GEMINI_API_KEY = "your-gemini-api-key-here"  # Replace with your actual Gemini API key
+OPENAI_API_KEY = ""  # Unused – reserved for future cloud providers
+GEMINI_API_KEY = ""  # Unused – reserved for future cloud providers
 
 # Available AI Models
 AVAILABLE_MODELS = {
-    "gpt-oss:20b": {
-        "description": "GPT-OSS 20B (Advanced, Slower)",
-        "type": "ollama"
-    },
     "gemma3:1b": {
         "description": "Gemma 3:1B (Fast, Efficient)", 
         "type": "ollama"
@@ -27,34 +23,31 @@ AVAILABLE_MODELS = {
     "remote-ollama": {
         "description": "Remote Ollama (via tunnel — select model after connecting)",
         "type": "ollama"
-    },
-    "gpt-3.5-turbo": {
-        "description": "OpenAI GPT-3.5 Turbo",
-        "type": "openai"
-    },
-    "gemini-1.5-flash": {
-        "description": "Google Gemini 1.5 Flash",
-        "type": "gemini"
     }
 }
 
 # Processing Modes
 PROCESSING_MODES = {
+    "fast": {
+        "description": "Quick stylometry analysis (fastest, recommended)",
+        "features": ["Fast Analysis", "Core Metrics", "Quick Profiling"],
+        "temperature": 0.3,
+        "timeout": 90,
+        "gemma_tokens": 2500
+    },
+    "statistical": {
+        "description": "Balanced analysis with statistical metrics",
+        "features": ["Statistical Metrics", "Readability Scores", "Balanced Analysis"],
+        "temperature": 0.3,
+        "timeout": 120,
+        "gemma_tokens": 2500
+    },
     "enhanced": {
-        "description": "Complete 25-point stylometry analysis with statistical metrics",
+        "description": "Complete deep stylometry analysis (slowest, most thorough)",
         "features": ["Deep Analysis", "Statistical Metrics", "Readability Scores", "Style Profiling"],
         "temperature": 0.2,
         "timeout": 180,
-        "gpt_oss_tokens": 3000,
-        "gemma_tokens": 2000
-    },
-    "statistical": {
-        "description": "Statistical analysis only (word count, readability, etc.)",
-        "features": ["Statistical Metrics", "Readability Scores", "Basic Analysis"],
-        "temperature": 0.3,
-        "timeout": 120,
-        "gpt_oss_tokens": 2000,
-        "gemma_tokens": 1500
+        "gemma_tokens": 3000
     }
 }
 

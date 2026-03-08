@@ -41,7 +41,6 @@ from collections import Counter
 # Configuration
 OLLAMA_BASE_URL = "http://localhost:11434"
 AVAILABLE_MODELS = {
-    "gpt-oss:20b": "GPT-OSS 20B (Advanced, Slower)",
     "gemma3:1b": "Gemma 3:1B (Fast, Efficient)",
 }
 OPENAI_API_KEY = "your-openai-api-key-here"  # Replace with your actual OpenAI API key
@@ -59,21 +58,18 @@ def get_user_model_choice():
         print("="*60)
         print("Choose your operation:")
         print("1. Analyze Writing Style (Local Processing)")
-        print("2. Analyze Writing Style (Online Processing)")
         print("0. Exit")
         print("="*60)
         
         try:
-            main_choice = input("\nEnter your choice (0-2): ").strip()
+            main_choice = input("\nEnter your choice (0-1): ").strip()
             if main_choice == "0":
                 print("Goodbye!")
                 sys.exit(0)
             elif main_choice == "1":
                 return get_local_model_choice()
-            elif main_choice == "2":
-                return get_online_model_choice()
             else:
-                print("Invalid choice. Please enter 0, 1, or 2.")
+                print("Invalid choice. Please enter 0 or 1.")
         except KeyboardInterrupt:
             print("\n\nOperation cancelled by user. Goodbye!")
             sys.exit(0)
@@ -84,75 +80,19 @@ def get_local_model_choice():
     print("LOCAL MODELS")
     print("="*40)
     print("Choose your local AI model:")
-    print("1. GPT-OSS 20B - Advanced analysis")
-    print("2. Gemma 3:1B - Fast processing")
+    print("1. Gemma 3:1B - Fast processing")
     print("0. Back to main menu")
     print("="*40)
     
     while True:
         try:
-            choice = input("\nEnter your choice (0-2): ").strip()
+            choice = input("\nEnter your choice (0-1): ").strip()
             if choice == "0":
                 return get_user_model_choice()
             elif choice == "1":
-                # GPT-OSS selected, now ask for mode
-                return get_gpt_oss_mode_choice()
-            elif choice == "2":
-                return True, "gemma3:1b", None, "normal"    # Use local model with Gemma
+                return True, "gemma3:1b", None, "normal"
             else:
-                print("Invalid choice. Please enter 0, 1, or 2.")
-        except KeyboardInterrupt:
-            print("\n\nOperation cancelled by user. Goodbye!")
-            sys.exit(0)
-
-def get_gpt_oss_mode_choice():
-    """Get user's choice of GPT-OSS processing mode."""
-    print("\n" + "="*50)
-    print("GPT-OSS 20B PROCESSING MODE")
-    print("="*50)
-    print("Choose processing mode:")
-    print("1. Normal Mode - Thorough analysis (slower, higher quality)")
-    print("2. Turbo Mode - Fast analysis (faster, good quality)")
-    print("0. Back to model selection")
-    print("="*50)
-    
-    while True:
-        try:
-            choice = input("\nEnter your choice (0-2): ").strip()
-            if choice == "0":
-                return get_local_model_choice()
-            elif choice == "1":
-                return True, "gpt-oss:20b", None, "normal"  # Normal mode
-            elif choice == "2":
-                return True, "gpt-oss:20b", None, "turbo"   # Turbo mode
-            else:
-                print("Invalid choice. Please enter 0, 1, or 2.")
-        except KeyboardInterrupt:
-            print("\n\nOperation cancelled by user. Goodbye!")
-            sys.exit(0)
-
-def get_online_model_choice():
-    """Get user's choice of online model."""
-    print("\n" + "="*40)
-    print("ONLINE MODELS")
-    print("="*40)
-    print("Choose your cloud AI model:")
-    print("1. OpenAI GPT-3.5-turbo")
-    print("2. Google Gemini-1.5-flash")
-    print("0. Back to main menu")
-    print("="*40)
-    
-    while True:
-        try:
-            choice = input("\nEnter your choice (0-2): ").strip()
-            if choice == "0":
-                return get_user_model_choice()
-            elif choice == "1":
-                return False, None, "openai", "normal"      # Use OpenAI API
-            elif choice == "2":
-                return False, None, "gemini", "normal"      # Use Gemini API
-            else:
-                print("Invalid choice. Please enter 0, 1, or 2.")
+                print("Invalid choice. Please enter 0 or 1.")
         except KeyboardInterrupt:
             print("\n\nOperation cancelled by user. Goodbye!")
             sys.exit(0)
@@ -511,7 +451,7 @@ Text to analyze:
 {text_to_analyze}
 """
 
-def analyze_style(text_to_analyze, use_local=True, model_name="gpt-oss:20b", api_type=None, api_client=None, user_profile=None, processing_mode="normal"):
+def analyze_style(text_to_analyze, use_local=True, model_name="gemma3:1b", api_type=None, api_client=None, user_profile=None, processing_mode="normal"):
     """
     Performs enhanced deep stylometry analysis using local Ollama, OpenAI API, or Gemini API.
     
@@ -578,55 +518,8 @@ def analyze_style(text_to_analyze, use_local=True, model_name="gpt-oss:20b", api
         except Exception as e:
             return f"Ollama Error: {e}"
     
-    elif api_type == "openai":
-        # Use OpenAI API
-        if not api_client:
-            return "OpenAI Error: No client provided. Please ensure client is initialized."
-        
-        print("Sending request to OpenAI GPT-3.5-turbo model...")
-        
-        try:
-            response = api_client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.2,  # Lower for more consistent analysis
-                max_tokens=3000   # More tokens for deep analysis
-            )
-            
-            print("Deep analysis completed successfully!")
-            return response.choices[0].message.content
-        except Exception as e:
-            return f"OpenAI API Error: {e}"
-    
-    elif api_type == "gemini":
-        # Use Gemini API
-        if not api_client:
-            return "Gemini Error: No client provided. Please ensure client is initialized."
-        
-        print("Sending request to Google Gemini-1.5-flash model...")
-        
-        try:
-            # Import for generation config
-            import google.generativeai as genai
-            
-            # Configure generation settings for consistent analysis
-            generation_config = genai.types.GenerationConfig(
-                temperature=0.2,
-                max_output_tokens=3000,
-                candidate_count=1
-            )
-            
-            response = api_client.generate_content(
-                prompt,
-                generation_config=generation_config
-            )
-            
-            print("Deep analysis completed successfully!")
-            return response.text
-        except Exception as e:
-            return f"Gemini API Error: {e}"
+    elif api_type == "openai" or api_type == "gemini":
+        return f"Error: {api_type} cloud API has been removed. Use local Ollama models instead."
     
     else:
         return "Error: Unknown API type or configuration"
@@ -867,7 +760,7 @@ def save_style_profile_dual_format(style_profile, base_filename="user_style_prof
             'error': f"Error saving files locally: {e}"
         }
 
-def create_enhanced_style_profile(file_paths, use_local=True, model_name="gpt-oss:20b", api_type=None, api_client=None, processing_mode="normal"):
+def create_enhanced_style_profile(file_paths, use_local=True, model_name="gemma3:1b", api_type=None, api_client=None, processing_mode="normal"):
     """
     Creates an enhanced comprehensive style profile from multiple text samples.
     
@@ -942,18 +835,7 @@ def create_enhanced_style_profile(file_paths, use_local=True, model_name="gpt-os
     consolidated_analysis = analyze_style(combined_text, use_local, model_name, api_type, api_client, user_profile, processing_mode)
     
     # Create metadata
-    if use_local:
-        analysis_method = f"Local Ollama ({model_name})"
-        model_used = model_name
-    elif api_type == "openai":
-        analysis_method = "OpenAI GPT-3.5-turbo"
-        model_used = "gpt-3.5-turbo"
-    elif api_type == "gemini":
-        analysis_method = "Google Gemini-1.5-flash"
-        model_used = "gemini-1.5-flash"
-    else:
-        analysis_method = "Unknown"
-        model_used = "unknown"
+    if use_local:\n        analysis_method = f\"Local Ollama ({model_name})\"\n        model_used = model_name\n    else:\n        analysis_method = \"Unknown\"\n        model_used = \"unknown\"
     
     enhanced_profile = {
         'profile_created': True,
@@ -1258,8 +1140,7 @@ def main():
             # Validate setup based on choice
             if use_local:
                 model_display = AVAILABLE_MODELS.get(selected_model, selected_model)
-                mode_display = f" ({processing_mode.capitalize()} Mode)" if selected_model == "gpt-oss:20b" else ""
-                print(f"\nLocal Ollama Model Selected: {model_display}{mode_display}")
+                print(f"\nLocal Ollama Model Selected: {model_display}")
                 print("=" * 50)
                 
                 # Check Ollama connection and model availability
@@ -1273,44 +1154,6 @@ def main():
                     continue  # Return to main menu instead of exit
                 
                 print(f"SUCCESS: {message}")
-                
-            elif api_type == "openai":
-                print("\nOpenAI API Model Selected")
-                print("=" * 40)
-                
-                # Get API key and initialize OpenAI client once
-                try:
-                    api_client, setup_message = setup_openai_client()
-                    if not api_client:
-                        print(f"ERROR: OpenAI Error: {setup_message}")
-                        continue  # Return to main menu instead of exit
-                    
-                    print(f"SUCCESS: {setup_message}")
-                except KeyboardInterrupt:
-                    print("\n\nSetup cancelled by user.")
-                    continue  # Return to main menu instead of exit
-                except Exception as e:
-                    print(f"ERROR: Unexpected error: {e}")
-                    continue  # Return to main menu instead of exit
-                    
-            elif api_type == "gemini":
-                print("\nGoogle Gemini API Model Selected")
-                print("=" * 40)
-                
-                # Get API key and initialize Gemini client once
-                try:
-                    api_client, setup_message = setup_gemini_client()
-                    if not api_client:
-                        print(f"ERROR: Gemini Error: {setup_message}")
-                        continue  # Return to main menu instead of exit
-                    
-                    print(f"SUCCESS: {setup_message}")
-                except KeyboardInterrupt:
-                    print("\n\nSetup cancelled by user.")
-                    continue  # Return to main menu instead of exit
-                except Exception as e:
-                    print(f"ERROR: Unexpected error: {e}")
-                    continue  # Return to main menu instead of exit
             
             # Ask about cleaning up old reports
             cleanup_old_reports()
@@ -1403,7 +1246,7 @@ def cli_entrypoint():
         "--analyze", nargs='+', metavar="FILE", help="Analyze one or more text files non-interactively"
     )
     parser.add_argument(
-        "--model", type=str, default=None, help="Specify model (e.g., gpt-oss:20b, gemma3:1b)"
+        "--model", type=str, default=None, help="Specify model (e.g., gemma3:1b)"
     )
     parser.add_argument(
         "--local", action="store_true", help="Force use of local model (Ollama)"
@@ -1419,7 +1262,7 @@ def cli_entrypoint():
     if args.analyze:
         # Non-interactive batch analysis
         use_local = args.local or not args.cloud
-        model_name = args.model if args.model else ("gpt-oss:20b" if use_local else "openai")
+        model_name = args.model if args.model else "gemma3:1b"
         api_type = None
         api_client = None
         processing_mode = "normal"

@@ -5,8 +5,6 @@ Handles interactive model selection and validation.
 
 from ..config.settings import AVAILABLE_MODELS, OLLAMA_BASE_URL, PROCESSING_MODES
 from ..models.ollama_client import check_ollama_connection, pull_ollama_model
-from ..models.openai_client import setup_openai_client, get_api_key as get_openai_api_key
-from ..models.gemini_client import setup_gemini_client, get_api_key as get_gemini_api_key
 from ..models.remote_ollama_client import (
     setup_remote_ollama,
     select_remote_model,
@@ -127,41 +125,6 @@ def validate_model_selection(model_key):
             'error': message,
             'suggestion': f"Run: ollama pull {model_key}"
         }
-    
-    elif model_type == 'openai':
-        # Test OpenAI API
-        client, message = setup_openai_client()
-        if client:
-            USE_LOCAL_MODEL = False
-            SELECTED_MODEL = model_key
-            # Get the API key that was used
-            api_key = get_openai_api_key() if not USER_CHOSEN_API_KEY else USER_CHOSEN_API_KEY
-            USER_CHOSEN_API_KEY = api_key
-            return {
-                'success': True,
-                'message': f"Γ£ô OpenAI API configured and ready"
-            }
-        else:
-            return {
-                'success': False,
-                'error': message
-            }
-    
-    elif model_type == 'gemini':
-        # Test Gemini API
-        client, message = setup_gemini_client()
-        if client:
-            USE_LOCAL_MODEL = False
-            SELECTED_MODEL = model_key
-            return {
-                'success': True,
-                'message': f"Γ£ô Gemini API configured and ready"
-            }
-        else:
-            return {
-                'success': False,
-                'error': message
-            }
     
     else:
         return {
@@ -288,32 +251,6 @@ def auto_select_best_available_model():
                     'model': model_key,
                     'type': 'ollama',
                     'message': f"Auto-selected local model: {model_key}"
-                }
-    
-    # Try OpenAI API as fallback
-    for model_key, model_info in AVAILABLE_MODELS.items():
-        if model_info['type'] == 'openai':
-            validation_result = validate_model_selection(model_key)
-            if validation_result['success']:
-                print(f"Γ£ô Auto-selected: {model_key} (OpenAI API)")
-                return {
-                    'success': True,
-                    'model': model_key,
-                    'type': 'openai',
-                    'message': f"Auto-selected OpenAI model: {model_key}"
-                }
-    
-    # Try Gemini API as last resort
-    for model_key, model_info in AVAILABLE_MODELS.items():
-        if model_info['type'] == 'gemini':
-            validation_result = validate_model_selection(model_key)
-            if validation_result['success']:
-                print(f"Γ£ô Auto-selected: {model_key} (Gemini API)")
-                return {
-                    'success': True,
-                    'model': model_key,
-                    'type': 'gemini',
-                    'message': f"Auto-selected Gemini model: {model_key}"
                 }
     
     return {

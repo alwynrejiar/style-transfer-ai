@@ -14,7 +14,7 @@ Modular Python package (`src/`) with three interfaces: interactive CLI, Streamli
 | Module | Purpose | Key exports |
 |---|---|---|
 | `config/settings.py` | All constants: `AVAILABLE_MODELS`, `PROCESSING_MODES`, API URLs, file paths | Import constants here; never hardcode |
-| `models/` | One client per provider: `ollama_client.py`, `openai_client.py`, `gemini_client.py` | `analyze_with_*()`, `setup_*_client()` |
+| `models/` | One client per provider: `ollama_client.py`, `remote_ollama_client.py` | `analyze_with_*()`, `setup_*_client()` |
 | `analysis/` | `analyzer.py` (orchestrator), `prompts.py` (25-point prompt), `metrics.py` (readability + Burrows' Delta), `analogy_engine.py` (cognitive bridging) | `analyze_style()`, `create_enhanced_style_profile()`, `detect_conceptual_density()`, `AnalogyInjector` |
 | `generation/` | `ContentGenerator`, `StyleTransfer`, `QualityController`, `GenerationTemplates` | `generate_content()`, `transfer_style()`, `compare_styles()` |
 | `storage/local_storage.py` | Dual-format save (JSON + TXT) with personalized filenames | `save_style_profile_locally()` |
@@ -37,13 +37,11 @@ analyzer.create_enhanced_style_profile(analogy_augmentation=True)
 
 ## Model Integration Patterns
 
-Four models in `AVAILABLE_MODELS` with types `ollama`, `openai`, `gemini`. Uniform call pattern:
+Two models in `AVAILABLE_MODELS`, both type `ollama`. Uniform call pattern:
 
 ```python
 # Every model client: analyze_with_*(prompt, ...) → str
 # Ollama:  requests.post("http://localhost:11434/api/generate", json=payload)
-# OpenAI:  client.chat.completions.create(model="gpt-3.5-turbo", ...)
-# Gemini:  model.generate_content(prompt, generation_config=...)
 ```
 
 **Global model state** in `src/menu/model_selection.py`: module-level `USE_LOCAL_MODEL`, `SELECTED_MODEL`, `USER_CHOSEN_API_KEY`. Reset via `reset_model_selection()`.
@@ -68,14 +66,9 @@ Four models in `AVAILABLE_MODELS` with types `ollama`, `openai`, `gemini`. Unifo
 pip install requests spacy streamlit plotly
 python -m spacy download en_core_web_sm
 
-# Optional providers
-pip install openai                    # OpenAI
-pip install google-generativeai       # Gemini
-
 # Local models (privacy-first default)
 ollama serve
 ollama pull gemma3:1b                 # fast
-ollama pull gpt-oss:20b              # advanced
 
 # Launch
 python scripts/run.py                 # CLI
@@ -96,7 +89,7 @@ Sample texts: `data/samples/`. Generated profiles: `stylometry fingerprints/`.
 - **`analogy_engine.py`** — `detect_conceptual_density()` is pure Python (no LLM); `AnalogyInjector` batches dense sentences into a single LLM call
 - **`metrics.py` auto-installs spaCy** at runtime via `_ensure_spacy_model()` if missing
 - **Processing modes**: `"enhanced"` (25-point, temp 0.2, 180s) vs `"statistical"` (basic, temp 0.3, 120s) in `PROCESSING_MODES`
-- **Ollama tokens**: `num_predict` = 3000 for `gpt-oss` models, 2000 for others (in `ollama_client.py`)
+- **Ollama tokens**: `num_predict` uses `gemma_tokens` setting from `PROCESSING_MODES` (in `ollama_client.py`)
 - **Analogy domains**: 7 built-in domains in `ANALOGY_DOMAINS` (sports, gaming, cooking, nature, daily_life, tech, general_simplification); default = `general_simplification`
 - **Conceptual density threshold**: `CONCEPTUAL_DENSITY_THRESHOLD = 0.45` (0-1 range; most academic text scores 0.45-0.70)
 - **PyInstaller**: `scripts/run.py` and `run_gui.py` detect `sys.frozen` and use `sys._MEIPASS` for bundled paths

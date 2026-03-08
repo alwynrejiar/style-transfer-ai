@@ -158,7 +158,7 @@ def set_remote_model(model_name: str):
 def analyze_with_remote_ollama(
     prompt: str,
     model_name: str = None,
-    processing_mode: str = "enhanced",
+    processing_mode: str = "fast",
     *,
     max_retries: int = 4,
 ) -> str:
@@ -172,7 +172,7 @@ def analyze_with_remote_ollama(
         prompt:          The analysis/generation prompt.
         model_name:      Model to use on the remote server. Falls back to
                          the module-level ``_REMOTE_MODEL`` if not provided.
-        processing_mode: 'enhanced' or 'statistical' (used for temperature/token
+        processing_mode: 'fast', 'statistical', or 'enhanced' (used for temperature/token
                          config, same as local Ollama).
         max_retries:     Number of retry attempts on transient errors.
 
@@ -189,14 +189,22 @@ def analyze_with_remote_ollama(
     if not model:
         raise RuntimeError("No remote model selected. Call select_remote_model() first.")
 
+    # Get settings from PROCESSING_MODES
+    from ..config.settings import PROCESSING_MODES
+    mode = PROCESSING_MODES.get(processing_mode, PROCESSING_MODES["fast"])
+    temperature = mode.get("temperature", 0.3)
+    
+    # Token limit depends on model family
+    num_predict = mode.get("gemma_tokens", 900)
+
     # Build payload — use /api/generate (single-shot, not chat)
     payload = {
         "model": model,
         "prompt": prompt,
         "stream": True,
         "options": {
-            "temperature": 0.2 if processing_mode == "enhanced" else 0.3,
-            "num_predict": 3000 if "gpt-oss" in model else 2000,
+            "temperature": temperature,
+            "num_predict": num_predict,
         },
     }
 

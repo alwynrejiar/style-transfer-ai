@@ -43,6 +43,7 @@ from src.config.settings import (
     VERSION,
 )
 from src.utils.text_processing import extract_basic_stats, read_text_file
+from src.storage.local_storage import delete_profile
 
 # ---------------------------------------------------------------------------
 # Appearance defaults
@@ -284,7 +285,7 @@ class StyleTransferApp:
                 input_data,
                 use_local=self._use_local_var.get(),
                 model_name=self._model_var.get() if self._use_local_var.get() else None,
-                processing_mode="enhanced",
+                processing_mode="fast",
                 analogy_augmentation=analogy_on,
                 analogy_domain=domain,
             )
@@ -706,15 +707,11 @@ class StyleTransferApp:
 
     def _delete_profile(self, path: str, name: str) -> None:
         if messagebox.askyesno("Confirm Delete", f"Delete profile '{name}'?"):
-            try:
-                os.remove(path)
-                # Also remove accompanying .txt if present
-                txt_path = path.rsplit(".", 1)[0] + ".txt"
-                if os.path.exists(txt_path):
-                    os.remove(txt_path)
+            result = delete_profile(path)
+            if result['success']:
                 self._show_page("profiles")
-            except Exception as exc:
-                messagebox.showerror("Error", f"Failed to delete:\n{exc}")
+            else:
+                messagebox.showerror("Error", result['error'])
 
     # ==================================================================
     # PAGE: Settings

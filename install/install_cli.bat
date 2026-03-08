@@ -148,7 +148,6 @@ if %errorlevel% neq 0 (
     echo https://ollama.ai/download
     echo.
     echo After installing Ollama, run these commands:
-    echo   ollama pull gpt-oss:20b
     echo   ollama pull gemma3:1b
     echo   ollama serve
     echo.
@@ -157,14 +156,6 @@ if %errorlevel% neq 0 (
     ollama --version
     echo.
     echo Checking for required AI models...
-    
-    ollama list | findstr "gpt-oss:20b" >nul 2>&1
-    if %errorlevel% neq 0 (
-        echo - gpt-oss:20b model not found
-        echo   Run: ollama pull gpt-oss:20b
-    ) else (
-        echo ✓ gpt-oss:20b model available
-    )
     
     ollama list | findstr "gemma3:1b" >nul 2>&1
     if %errorlevel% neq 0 (

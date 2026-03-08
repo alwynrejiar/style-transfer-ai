@@ -23,8 +23,6 @@ def test_imports():
         print("✓ Analyzer imports successful")
         
         from src.models.ollama_client import check_ollama_connection, analyze_with_ollama
-        from src.models.openai_client import setup_openai_client, analyze_with_openai
-        from src.models.gemini_client import setup_gemini_client, analyze_with_gemini
         print("✓ Model client imports successful")
         
         return True

@@ -38,7 +38,7 @@ def test_imports():
             test_results.append((f"Utils.{module}", False, str(e)))
     
     # Test model modules
-    model_modules = ['ollama_client', 'openai_client', 'gemini_client']
+    model_modules = ['ollama_client', 'remote_ollama_client']
     for module in model_modules:
         try:
             exec(f"from src.models import {module}")

@@ -15,16 +15,15 @@ from ..config.settings import (
 from ..analysis.analyzer import create_enhanced_style_profile
 from ..analysis.metrics import calculate_style_similarity, extract_deep_stylometry
 from ..analysis.analogy_engine import detect_conceptual_density, AnalogyInjector
-from ..storage.local_storage import list_local_profiles, load_local_profile, cleanup_old_reports, save_style_profile_locally
+from ..storage.local_storage import list_local_profiles, load_local_profile, save_style_profile_locally, delete_profile
 from .model_selection import (
     select_model_interactive, 
     reset_model_selection, 
     get_current_model_info
 )
-from ..models.openai_client import setup_openai_client
-from ..models.gemini_client import setup_gemini_client
 from ..models.ollama_client import list_ollama_models, pull_ollama_model, is_ollama_installed
 from ..utils.user_profile import get_file_paths
+from ..utils.text_processing import read_text_file
 from ..generation import ContentGenerator, StyleTransfer, QualityController
 
 
@@ -44,28 +43,27 @@ def display_main_menu():
     print("-" * 60)
     
     print("STYLE ANALYSIS:")
-    print("1. Analyze Writing Style (Complete Analysis)")
-    print("2. Quick Style Analysis (Statistical Only)")
+    print("1. Analyze Writing Style (Fast Mode - Recommended)")
+    print("2. Balanced Analysis (More Detail, Slower)")
     print("3. View Existing Style Profiles")
     print("")
     print("CONTENT GENERATION:")
     print("4. Generate Content with Style Profile")
     print("5. Transfer Content to Different Style")
-    print("6. Style Comparison & Analysis")
     print("")
     print("COMPARISON & EVALUATION:")
-    print("7. Compare Saved Profiles (Deep Stylometry)")
+    print("6. Style Comparison & Analysis (Profiles / Text / File)")
+    print("")
+    print("COGNITIVE LOAD OPTIMIZATION:")
+    print("7. Cognitive Bridging / Analogy Engine")
     print("")
     print("DATA MANAGEMENT:")
-    print("8. Cleanup Old Reports")
+    print("8. Delete Style Profiles")
     print("9. Manage Local Models (Ollama)")
     print("10. Switch Analysis Model")
     print("11. Check Configuration")
     print("12. Launch GUI")
     print("13. Run Scripts (Utilities/Install)")
-    print("")
-    print("COGNITIVE LOAD OPTIMIZATION:")
-    print("14. Cognitive Bridging / Analogy Engine")
     print("0. Exit")
     print("="*60)
 
@@ -94,7 +92,7 @@ def _ask_analogy_options():
     return True, domain
 
 
-def handle_analyze_style(processing_mode='enhanced'):
+def handle_analyze_style(processing_mode='fast'):
     """Handle style analysis workflow."""
     try:
         print(f"\nStarting {processing_mode} style analysis...")
@@ -116,59 +114,20 @@ def handle_analyze_style(processing_mode='enhanced'):
             print("No input provided. Analysis cancelled.")
             return
         
-        # Ask about analogy augmentation (only for enhanced mode)
+        # Ask about analogy augmentation (not available in fast mode)
         analogy_enabled, analogy_domain = False, None
-        if processing_mode == 'enhanced':
+        if processing_mode in ['statistical', 'enhanced']:
             analogy_enabled, analogy_domain = _ask_analogy_options()
         
         # Prepare model parameters based on selection
-        if model_info['use_local_model']:
-            # Local Ollama model
-            style_profile = create_enhanced_style_profile(
-                input_data, 
-                use_local=True, 
-                model_name=model_info['selected_model'], 
-                processing_mode=processing_mode,
-                analogy_augmentation=analogy_enabled,
-                analogy_domain=analogy_domain,
-            )
-        else:
-            # Cloud API model
-            model_type = None
-            api_client = None
-            
-            if 'gpt' in model_info['selected_model'].lower():
-                model_type = 'openai'
-                client, message = setup_openai_client(model_info['user_chosen_api_key'])
-                if client:
-                    api_client = client
-                    print(f"Γ£ô {message}")
-                else:
-                    print(f"Γ£ù Failed to setup OpenAI client: {message}")
-                    return
-            elif 'gemini' in model_info['selected_model'].lower():
-                model_type = 'gemini'
-                client, message = setup_gemini_client()
-                if client:
-                    api_client = client
-                    print(f"Γ£ô {message}")
-                else:
-                    print(f"Γ£ù Failed to setup Gemini client: {message}")
-                    return
-            
-            if not api_client:
-                print("Γ£ù Failed to initialize API client")
-                return
-            
-            style_profile = create_enhanced_style_profile(
-                input_data,
-                use_local=False,
-                api_type=model_type,
-                api_client=api_client,
-                processing_mode=processing_mode,
-                analogy_augmentation=analogy_enabled,
-                analogy_domain=analogy_domain,
-            )
+        style_profile = create_enhanced_style_profile(
+            input_data, 
+            use_local=True, 
+            model_name=model_info['selected_model'], 
+            processing_mode=processing_mode,
+            analogy_augmentation=analogy_enabled,
+            analogy_domain=analogy_domain,
+        )
         
         # Save the analysis results locally
         if style_profile:
@@ -256,6 +215,63 @@ def handle_view_profiles():
         print("\n\nReturning to main menu...")
 
 
+def handle_delete_profiles():
+    """Handle deleting unwanted style profiles."""
+    profiles = list_local_profiles()
+
+    if not profiles:
+        print("\nNo style profiles found.")
+        return
+
+    print(f"\nFound {len(profiles)} style profiles:")
+    print("-" * 80)
+
+    for i, profile in enumerate(profiles, 1):
+        filename_only = os.path.basename(profile['filename'])
+        user_name = filename_only.split('_stylometric_profile_')[0] if '_stylometric_profile_' in filename_only else 'Unknown'
+        size_mb = profile['size'] / (1024 * 1024)
+        print(f"{i:2d}. {filename_only} | {user_name} | {profile['modified']} | {size_mb:.2f} MB")
+
+    print("-" * 80)
+    print("Enter profile numbers to delete (comma-separated), 'all' to delete all, or 0 to cancel.")
+
+    try:
+        choice = input("\nProfiles to delete: ").strip()
+
+        if choice == "0":
+            return
+
+        if choice.lower() == "all":
+            confirm = input(f"Delete ALL {len(profiles)} profiles? This cannot be undone. (yes/no): ").strip().lower()
+            if confirm != "yes":
+                print("Cancelled.")
+                return
+            indices = range(len(profiles))
+        else:
+            try:
+                indices = [int(n.strip()) - 1 for n in choice.split(",")]
+                if any(i < 0 or i >= len(profiles) for i in indices):
+                    print("One or more invalid profile numbers.")
+                    return
+            except ValueError:
+                print("Invalid input. Please enter numbers separated by commas.")
+                return
+
+        deleted_total = 0
+        for idx in indices:
+            result = delete_profile(profiles[idx]['filename'])
+            if result['success']:
+                print(f"  Deleted: {result['message']}")
+                deleted_total += 1
+            else:
+                print(f"  Failed: {result['error']}")
+
+        print(f"\nDeleted {deleted_total} profile(s).")
+
+    except KeyboardInterrupt:
+        print("\n\nReturning to main menu...")
+
+
 def display_profile_summary(profile_data):
     """Display a summary of a style profile."""
     print("\n" + "="*80)
@@ -294,40 +310,6 @@ def display_profile_summary(profile_data):
         print(f"  {summary[:200]}...")
     
     print("="*80)
-
-
-def handle_cleanup_reports():
-    """Handle cleanup of old reports."""
-    print("\nCleaning up old reports...")
-    
-    # Get cleanup preferences
-    try:
-        days = input("Keep reports from last how many days? (default: 30): ").strip()
-        if not days:
-            days = 30
-        else:
-            days = int(days)
-        
-        result = cleanup_old_reports(days_to_keep=days)
-        
-        if result['success']:
-            print(f"SUCCESS: {result['message']}")
-            if result['deleted_files']:
-                print("Deleted files:")
-                for file in result['deleted_files']:
-                    print(f"  - {file}")
-        else:
-            print(f"ERROR: {result['error']}")
-            
-    except ValueError:
-        print("Invalid input. Using default 30 days.")
-        result = cleanup_old_reports(days_to_keep=30)
-        if result['success']:
-            print(f"SUCCESS: {result['message']}")
-    except Exception as e:
-        print(f"Error during cleanup: {e}")
-    
-    input("\nPress Enter to continue...")
 
 
 def handle_check_configuration():
@@ -727,50 +709,16 @@ def handle_generate_content():
                 print(f"\nGenerating {content_type} content with {selected_profile['filename']} style...")
                 
                 # Generate content based on model type
-                if model_info['use_local_model']:
-                    result = generator.generate_content(
-                        style_profile=profile_data,
-                        content_type=content_type,
-                        topic_or_prompt=topic,
-                        target_length=target_length,
-                        tone=tone,
-                        additional_context=context,
-                        use_local=True,
-                        model_name=model_info['selected_model']
-                    )
-                else:
-                    # Setup API client
-                    api_client = None
-                    api_type = None
-                    
-                    if 'gpt' in model_info['selected_model'].lower():
-                        api_type = 'openai'
-                        client, message = setup_openai_client(model_info['user_chosen_api_key'])
-                        if client:
-                            api_client = client
-                        else:
-                            print(f"Failed to setup OpenAI client: {message}")
-                            return
-                    elif 'gemini' in model_info['selected_model'].lower():
-                        api_type = 'gemini'
-                        client, message = setup_gemini_client()
-                        if client:
-                            api_client = client
-                        else:
-                            print(f"Failed to setup Gemini client: {message}")
-                            return
-                    
-                    result = generator.generate_content(
-                        style_profile=profile_data,
-                        content_type=content_type,
-                        topic_or_prompt=topic,
-                        target_length=target_length,
-                        tone=tone,
-                        additional_context=context,
-                        use_local=False,
-                        api_type=api_type,
-                        api_client=api_client
-                    )
+                result = generator.generate_content(
+                    style_profile=profile_data,
+                    content_type=content_type,
+                    topic_or_prompt=topic,
+                    target_length=target_length,
+                    tone=tone,
+                    additional_context=context,
+                    use_local=True,
+                    model_name=model_info['selected_model']
+                )
                 
                 # Display results
                 if 'error' in result:
@@ -979,48 +927,15 @@ def handle_style_transfer():
                 print(f"\nTransferring content to {selected_profile['filename']} style...")
                 
                 # Perform style transfer based on model type
-                if model_info['use_local_model']:
-                    result = transfer.transfer_style(
-                        original_content=original_content,
-                        target_style_profile=profile_data,
-                        transfer_type=transfer_type,
-                        intensity=intensity,
-                        preserve_elements=preserve_list,
-                        use_local=True,
-                        model_name=model_info['selected_model']
-                    )
-                else:
-                    # Setup API client
-                    api_client = None
-                    api_type = None
-                    
-                    if 'gpt' in model_info['selected_model'].lower():
-                        api_type = 'openai'
-                        client, message = setup_openai_client(model_info['user_chosen_api_key'])
-                        if client:
-                            api_client = client
-                        else:
-                            print(f"Failed to setup OpenAI client: {message}")
-                            return
-                    elif 'gemini' in model_info['selected_model'].lower():
-                        api_type = 'gemini'
-                        client, message = setup_gemini_client()
-                        if client:
-                            api_client = client
-                        else:
-                            print(f"Failed to setup Gemini client: {message}")
-                            return
-                    
-                    result = transfer.transfer_style(
-                        original_content=original_content,
-                        target_style_profile=profile_data,
-                        transfer_type=transfer_type,
-                        intensity=intensity,
-                        preserve_elements=preserve_list,
-                        use_local=False,
-                        api_type=api_type,
-                        api_client=api_client
-                    )
+                result = transfer.transfer_style(
+                    original_content=original_content,
+                    target_style_profile=profile_data,
+                    transfer_type=transfer_type,
+                    intensity=intensity,
+                    preserve_elements=preserve_list,
+                    use_local=True,
+                    model_name=model_info['selected_model']
+                )
                 
                 # Display results
                 if 'error' in result:
@@ -1139,81 +1054,97 @@ def handle_style_transfer():
         print(f"\nError in style transfer: {e}")
 
 
-def handle_compare_profiles():
-    """Compare two saved stylometric profiles using deep stylometry similarity."""
-    try:
-        print("\n" + "="*60)
-        print("COMPARE SAVED STYLOMETRIC PROFILES")
-        print("="*60)
+def _get_person_input(label):
+    """Prompt the user to provide input for one side of a comparison.
 
+    Returns (deep_stylometry_dict, display_name) or (None, None) on failure.
+    """
+    print(f"\n--- {label} ---")
+    print("  1. Load a saved profile")
+    print("  2. Paste text")
+    print("  3. Load text from file")
+    choice = input("Choose input method (1/2/3): ").strip()
+
+    if choice == "1":
         profiles = list_local_profiles()
-        if not profiles or len(profiles) < 2:
-            print("\nYou need at least 2 saved profiles to compare.")
-            print("Run a style analysis first to create profiles.")
-            input("\nPress Enter to continue...")
-            return
-
-        # Display available profiles
+        if not profiles:
+            print("No saved profiles found.")
+            return None, None
         print(f"\nFound {len(profiles)} saved profiles:\n")
         for i, p in enumerate(profiles, 1):
             filename = os.path.basename(p['filename'])
             user_name = filename.split('_stylometric_profile_')[0] if '_stylometric_profile_' in filename else filename.replace('.json', '')
             size_kb = p['size'] / 1024
             print(f"  {i:2d}. {filename}  ({user_name}, {size_kb:.1f} KB, {p['modified']})")
-
-        # Select first profile
-        print("\n--- Select the FIRST profile ---")
-        choice1 = input("Enter profile number: ").strip()
+        sel = input("Enter profile number: ").strip()
         try:
-            idx1 = int(choice1) - 1
-            if not (0 <= idx1 < len(profiles)):
+            idx = int(sel) - 1
+            if not (0 <= idx < len(profiles)):
                 print("Invalid selection.")
-                return
+                return None, None
         except ValueError:
             print("Invalid input.")
+            return None, None
+        result = load_local_profile(profiles[idx]['filename'])
+        if not result['success']:
+            print(f"Failed to load profile: {result.get('message', 'Unknown error')}")
+            return None, None
+        ds = result['profile'].get('deep_stylometry', {})
+        if not ds:
+            print("This profile has no deep stylometry data. Re-analyze the text with the current version.")
+            return None, None
+        name = os.path.basename(profiles[idx]['filename']).replace('.json', '')
+        return ds, name
+
+    elif choice == "2":
+        print(f"Paste text for {label} (press Enter twice on an empty line to finish):")
+        lines = []
+        while True:
+            line = input()
+            if line == "" and lines and lines[-1] == "":
+                break
+            lines.append(line)
+        text = "\n".join(lines[:-1]) if lines and lines[-1] == "" else "\n".join(lines)
+        if not text.strip():
+            print("No text entered.")
+            return None, None
+        print("Computing deep stylometry from text...")
+        ds = extract_deep_stylometry(text)
+        return ds, label
+
+    elif choice == "3":
+        file_path = input("Enter file path: ").strip()
+        text = read_text_file(file_path)
+        if text.startswith("Error:"):
+            print(text)
+            return None, None
+        print("Computing deep stylometry from file...")
+        ds = extract_deep_stylometry(text)
+        name = os.path.basename(file_path)
+        return ds, name
+
+    else:
+        print("Invalid choice.")
+        return None, None
+
+
+def handle_style_comparison():
+    """Unified style comparison — accepts saved profiles or raw text for each side."""
+    try:
+        print("\n" + "="*60)
+        print("STYLE COMPARISON & ANALYSIS")
+        print("="*60)
+        print("Compare two writing samples using deep stylometry.")
+        print("For each person you can load a saved profile, paste text,")
+        print("or load text from a file.\n")
+
+        ds1, name1 = _get_person_input("Person 1")
+        if ds1 is None:
+            input("\nPress Enter to continue...")
             return
 
-        # Select second profile
-        print("--- Select the SECOND profile ---")
-        choice2 = input("Enter profile number: ").strip()
-        try:
-            idx2 = int(choice2) - 1
-            if not (0 <= idx2 < len(profiles)):
-                print("Invalid selection.")
-                return
-        except ValueError:
-            print("Invalid input.")
-            return
-
-        if idx1 == idx2:
-            print("Please select two different profiles.")
-            return
-
-        # Load both profiles
-        print("\nLoading profiles...")
-        result1 = load_local_profile(profiles[idx1]['filename'])
-        result2 = load_local_profile(profiles[idx2]['filename'])
-
-        if not result1['success']:
-            print(f"Failed to load profile 1: {result1.get('message', 'Unknown error')}")
-            return
-        if not result2['success']:
-            print(f"Failed to load profile 2: {result2.get('message', 'Unknown error')}")
-            return
-
-        profile_data1 = result1['profile']
-        profile_data2 = result2['profile']
-
-        name1 = os.path.basename(profiles[idx1]['filename']).replace('.json', '')
-        name2 = os.path.basename(profiles[idx2]['filename']).replace('.json', '')
-
-        # Extract deep stylometry from saved profiles
-        ds1 = profile_data1.get('deep_stylometry', {})
-        ds2 = profile_data2.get('deep_stylometry', {})
-
-        if not ds1 or not ds2:
-            print("\nOne or both profiles lack deep stylometry data.")
-            print("Re-analyze the text with v1.3.0+ to include deep stylometry.")
+        ds2, name2 = _get_person_input("Person 2")
+        if ds2 is None:
             input("\nPress Enter to continue...")
             return
 
@@ -1223,10 +1154,10 @@ def handle_compare_profiles():
 
         # Display results
         print("="*60)
-        print("PROFILE COMPARISON RESULTS")
+        print("STYLE COMPARISON RESULTS")
         print("="*60)
-        print(f"\n  Profile A: {name1}")
-        print(f"  Profile B: {name2}")
+        print(f"\n  A: {name1}")
+        print(f"  B: {name2}")
         print()
 
         combined = similarity.get('combined_score', 0.0)
@@ -1259,10 +1190,9 @@ def handle_compare_profiles():
         print("KEY METRIC COMPARISON")
         print("-"*60)
 
-        # Vocabulary richness
         vr1 = ds1.get('vocabulary_richness', {})
         vr2 = ds2.get('vocabulary_richness', {})
-        header = f"\n  {'Metric':<30}  {'Profile A':>12}  {'Profile B':>12}"
+        header = f"\n  {'Metric':<30}  {'A':>12}  {'B':>12}"
         print(header)
         divider_char = '\u2500'
         print(f"  {divider_char*30}  {divider_char*12}  {divider_char*12}")
@@ -1297,7 +1227,7 @@ def handle_compare_profiles():
         sl2 = ds2.get('sentence_length_distribution', {})
         if sl1 and sl2:
             print(f"\n  Sentence Length Distribution:")
-            print(f"    {'':>12}  {'Profile A':>12}  {'Profile B':>12}")
+            print(f"    {'':>12}  {'A':>12}  {'B':>12}")
             for key in ['mean', 'median', 'std_dev', 'min', 'max']:
                 print(f"    {key:>12}  {sl1.get(key, 0):>12.2f}  {sl2.get(key, 0):>12.2f}")
 
@@ -1311,10 +1241,10 @@ def handle_compare_profiles():
             filename = f"profile_comparison_{timestamp}.txt"
             try:
                 with open(filename, 'w', encoding='utf-8') as f:
-                    f.write("STYLOMETRIC PROFILE COMPARISON\n")
+                    f.write("STYLOMETRIC COMPARISON\n")
                     f.write("="*60 + "\n")
-                    f.write(f"Profile A: {name1}\n")
-                    f.write(f"Profile B: {name2}\n\n")
+                    f.write(f"A: {name1}\n")
+                    f.write(f"B: {name2}\n\n")
                     f.write(f"Combined Score:     {combined:.4f}\n")
                     f.write(f"Cosine Similarity:  {cosine:.4f}\n")
                     f.write(f"Burrows' Delta:     {burrows:.4f}\n")
@@ -1325,147 +1255,6 @@ def handle_compare_profiles():
 
         input("\nPress Enter to continue...")
 
-    except KeyboardInterrupt:
-        print("\n\nReturning to main menu...")
-    except Exception as e:
-        print(f"\nError comparing profiles: {e}")
-        input("\nPress Enter to continue...")
-
-
-def handle_style_comparison():
-    """Handle style comparison between two content samples."""
-    try:
-        print("\n" + "="*50)
-        print("STYLE COMPARISON & ANALYSIS")
-        print("="*50)
-        
-        # Initialize style transfer for comparison functionality
-        transfer = StyleTransfer()
-        
-        # Get first content sample
-        print("1. First content sample:")
-        content1_choice = input("Enter content (1) or file path (2)? (1/2): ").strip()
-        
-        content1 = ""
-        if content1_choice == "1":
-            print("Enter first content (press Enter twice to finish):")
-            lines = []
-            while True:
-                line = input()
-                if line == "" and len(lines) > 0:
-                    if lines[-1] == "":
-                        break
-                lines.append(line)
-            content1 = "\n".join(lines[:-1])
-        elif content1_choice == "2":
-            file_path = input("Enter file path: ").strip()
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content1 = f.read()
-            except Exception as e:
-                print(f"Failed to read file: {e}")
-                return
-        
-        # Get second content sample
-        print("\n2. Second content sample:")
-        content2_choice = input("Enter content (1) or file path (2)? (1/2): ").strip()
-        
-        content2 = ""
-        if content2_choice == "1":
-            print("Enter second content (press Enter twice to finish):")
-            lines = []
-            while True:
-                line = input()
-                if line == "" and len(lines) > 0:
-                    if lines[-1] == "":
-                        break
-                lines.append(line)
-            content2 = "\n".join(lines[:-1])
-        elif content2_choice == "2":
-            file_path = input("Enter file path: ").strip()
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content2 = f.read()
-            except Exception as e:
-                print(f"Failed to read file: {e}")
-                return
-        
-        if not content1.strip() or not content2.strip():
-            print("Both content samples are required.")
-            return
-        
-        print("\nAnalyzing style differences...")
-        
-        # Perform style comparison
-        comparison = transfer.compare_styles(content1, content2)
-        
-        if 'error' in comparison:
-            print(f"Comparison failed: {comparison['error']}")
-        else:
-            print("\n" + "="*60)
-            print("STYLE COMPARISON RESULTS")
-            print("="*60)
-            
-            # Display basic statistics
-            analysis1 = comparison.get('content1_analysis', {})
-            analysis2 = comparison.get('content2_analysis', {})
-            
-            print("\nCONTENT 1 ANALYSIS:")
-            print(f"Word Count: {analysis1.get('word_count', 'N/A')}")
-            print(f"Sentence Count: {analysis1.get('sentence_count', 'N/A')}")
-            print(f"Avg Sentence Length: {analysis1.get('avg_sentence_length', 'N/A'):.1f}")
-            print(f"Lexical Diversity: {analysis1.get('lexical_diversity', 'N/A'):.3f}")
-            print(f"Formality Level: {analysis1.get('formality_level', 'N/A')}")
-            
-            print("\nCONTENT 2 ANALYSIS:")
-            print(f"Word Count: {analysis2.get('word_count', 'N/A')}")
-            print(f"Sentence Count: {analysis2.get('sentence_count', 'N/A')}")
-            print(f"Avg Sentence Length: {analysis2.get('avg_sentence_length', 'N/A'):.1f}")
-            print(f"Lexical Diversity: {analysis2.get('lexical_diversity', 'N/A'):.3f}")
-            print(f"Formality Level: {analysis2.get('formality_level', 'N/A')}")
-            
-            # Display comparison metrics
-            print(f"\nSIMILARITY SCORE: {comparison.get('similarity_score', 'N/A'):.3f}")
-            
-            differences = comparison.get('style_differences', {})
-            print(f"\nSTYLE DIFFERENCES:")
-            print(f"Sentence Length Difference: {differences.get('sentence_length_diff', 'N/A'):.1f} words")
-            print(f"Formality Difference: {'Yes' if differences.get('formality_diff', False) else 'No'}")
-            
-            # Display recommendations
-            recommendations = comparison.get('recommendations', [])
-            if recommendations:
-                print(f"\nRECOMMENDATIONS:")
-                for rec in recommendations:
-                    print(f"ΓÇó {rec}")
-            
-            print("="*60)
-            
-            # Save comparison results
-            save_choice = input("\nSave comparison results? (y/n): ").strip().lower()
-            if save_choice == 'y':
-                timestamp = comparison.get('timestamp', 'unknown')
-                filename = f"style_comparison_{timestamp}.txt"
-                
-                try:
-                    with open(filename, 'w', encoding='utf-8') as f:
-                        f.write("STYLE COMPARISON RESULTS\n")
-                        f.write("="*60 + "\n\n")
-                        f.write("CONTENT 1:\n")
-                        f.write(content1[:300] + "...\n\n" if len(content1) > 300 else content1 + "\n\n")
-                        f.write("CONTENT 2:\n")
-                        f.write(content2[:300] + "...\n\n" if len(content2) > 300 else content2 + "\n\n")
-                        f.write(f"Similarity Score: {comparison.get('similarity_score', 'N/A')}\n")
-                        f.write(f"Differences: {differences}\n")
-                        if recommendations:
-                            f.write(f"Recommendations: {recommendations}\n")
-                    
-                    print(f"Comparison results saved as: {filename}")
-                except Exception as e:
-                    print(f"Failed to save results: {e}")
-        
-        input("\nPress Enter to continue...")
-        
     except KeyboardInterrupt:
         print("\n\nReturning to main menu...")
     except Exception as e:
@@ -1558,32 +1347,11 @@ def handle_cognitive_bridging():
         print("This may take 30-60 seconds while the model processes...")
         injector = AnalogyInjector(domain=domain)
 
-        if model_info['use_local_model']:
-            result = injector.augment_text(
-                text,
-                use_local=True,
-                model_name=model_info['selected_model'],
-            )
-        else:
-            # Cloud API setup
-            api_type, api_client = None, None
-            if 'gpt' in model_info['selected_model'].lower():
-                api_type = 'openai'
-                client, msg = setup_openai_client(model_info['user_chosen_api_key'])
-                api_client = client
-            elif 'gemini' in model_info['selected_model'].lower():
-                api_type = 'gemini'
-                client, msg = setup_gemini_client()
-                api_client = client
-            if not api_client:
-                print("Failed to initialise API client.")
-                return
-            result = injector.augment_text(
-                text,
-                use_local=False,
-                api_type=api_type,
-                api_client=api_client,
-            )
+        result = injector.augment_text(
+            text,
+            use_local=True,
+            model_name=model_info['selected_model'],
+        )
 
         # --- Display ---
         print(f"\nGenerated {result['analogy_count']} cognitive note(s).")
@@ -1633,14 +1401,14 @@ def run_main_menu():
     while True:
         try:
             display_main_menu()
-            choice = input("\nEnter your choice (0-14): ").strip()
+            choice = input("\nEnter your choice (0-13): ").strip()
             
             if choice == "0":
                 print("\nThank you for using Style Transfer AI!")
                 sys.exit(0)
                 
             elif choice == "1":
-                handle_analyze_style(processing_mode='enhanced')
+                handle_analyze_style(processing_mode='fast')
                 
             elif choice == "2":
                 handle_analyze_style(processing_mode='statistical')
@@ -1658,10 +1426,10 @@ def run_main_menu():
                 handle_style_comparison()
                 
             elif choice == "7":
-                handle_compare_profiles()
+                handle_cognitive_bridging()
                 
             elif choice == "8":
-                handle_cleanup_reports()
+                handle_delete_profiles()
                 
             elif choice == "9":
                 handle_model_management()
@@ -1679,12 +1447,9 @@ def run_main_menu():
 
             elif choice == "13":
                 handle_run_scripts()
-
-            elif choice == "14":
-                handle_cognitive_bridging()
                 
             else:
-                print("Invalid choice. Please enter 0-14.")
+                print("Invalid choice. Please enter 0-13.")
                 
         except KeyboardInterrupt:
             print("\n\nExiting Style Transfer AI...")

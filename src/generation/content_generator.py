@@ -8,8 +8,6 @@ from datetime import datetime
 from typing import Dict, List, Optional, Union
 
 from ..models.ollama_client import analyze_with_ollama
-from ..models.openai_client import analyze_with_openai  
-from ..models.gemini_client import analyze_with_gemini
 from ..utils.text_processing import extract_basic_stats
 from ..analysis.metrics import extract_deep_stylometry, calculate_style_similarity
 from ..config.settings import TIMESTAMP_FORMAT
@@ -261,16 +259,10 @@ Generate the content now, ensuring it authentically reflects the specified writi
         try:
             if model_name == "remote-ollama":
                 from ..models.remote_ollama_client import analyze_with_remote_ollama
-                result = analyze_with_remote_ollama(prompt, processing_mode="enhanced")
+                result = analyze_with_remote_ollama(prompt, processing_mode="fast")
                 return result
             elif use_local and model_name:
-                result = analyze_with_ollama(prompt, model_name, processing_mode="enhanced")
-                return result
-            elif api_type == "openai" and api_client:
-                result = analyze_with_openai(api_client, prompt)
-                return result
-            elif api_type == "gemini" and api_client:
-                result = analyze_with_gemini(api_client, prompt)
+                result = analyze_with_ollama(prompt, model_name, processing_mode="fast")
                 return result
             else:
                 raise ValueError("Invalid model configuration for generation")

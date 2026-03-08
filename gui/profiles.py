@@ -5,6 +5,8 @@ import json
 import glob
 import math
 
+from src.storage.local_storage import delete_profile
+
 try:
     import plotly.graph_objects as go
     PLOTLY_AVAILABLE = True
@@ -294,12 +296,12 @@ def show():
             # Delete button
             st.markdown("---")
             if st.button("\U0001f5d1\ufe0f Delete Profile", type="primary"):
-                try:
-                    os.remove(file_path)
-                    st.success(f"Deleted {selected_file}")
+                result = delete_profile(file_path)
+                if result['success']:
+                    st.success(result['message'])
                     st.rerun()
-                except Exception as e:
-                    st.error(f"Failed to delete: {e}")
+                else:
+                    st.error(result['error'])
 
         # --- Compare two profiles view ---
         elif compare_btn:
