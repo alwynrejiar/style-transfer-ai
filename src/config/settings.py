@@ -5,7 +5,7 @@ Contains all constants, API endpoints, and model configurations.
 
 # Application Information
 APPLICATION_NAME = "Style Transfer AI"
-VERSION = "1.2.0"
+VERSION = "1.4.0"
 AUTHOR = "Style Transfer AI Team"
 
 # API Configuration
@@ -114,3 +114,16 @@ DEFAULT_ANALOGY_DOMAIN = "general_simplification"
 # Range 0.0-1.0.  Higher = only the densest sentences get analogies.
 # Most academic/technical sentences score 0.45-0.70; casual text scores 0.25-0.40.
 CONCEPTUAL_DENSITY_THRESHOLD = 0.45
+# ---------------------------------------------------------------------------
+# Supabase / Cloud Database Configuration
+# ---------------------------------------------------------------------------
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
+
+# Set to True to enable cloud storage via Supabase (for website/API use).
+# When False, the CLI/GUI/Streamlit continue using local file storage only.
+USE_CLOUD_STORAGE = bool(SUPABASE_URL and SUPABASE_ANON_KEY)

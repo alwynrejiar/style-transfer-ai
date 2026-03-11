@@ -1,4 +1,4 @@
-# Stylomex - Enhanced Deep Stylometry Analyzer v1.1.0
+# Stylomex - Enhanced Deep Stylometry Analyzer v1.4.0
 
 🎯  Advanced stylometry analysis system with personalized linguistic fingerprinting and privacy-first local processing**
 
@@ -37,7 +37,7 @@ python scripts/run_gui.py        # Desktop GUI
 **📋 Quick Setup Notes:**
 - **No dependencies required** - Package installs everything automatically
 - **Local processing** - Works offline with Ollama models (optional)
-- **Privacy-first** - No cloud dependencies, no Firebase
+- **Privacy-first** - Local processing by default, optional cloud database via Supabase
 - **Global CLI** - Use `style-transfer-ai` from anywhere after installation
 
 ## Features
@@ -418,10 +418,10 @@ style-transfer-ai/
 │   ├── models/                         # AI model clients
 │   ├── menu/                          # Interactive menu system
 │   ├── config/                        # Configuration management
+│   ├── database/                      # Supabase cloud database & auth
 │   ├── storage/                       # Local storage only
 │   ├── utils/                         # Utility functions
 │   └── gui/                           # CustomTkinter desktop UI
-│   └── utils/                         # Utility functions
 ├── gui/                                # Streamlit UI pages
 ├── install/                           # Installation scripts
 │   ├── install_cli.bat               # Windows batch installer
@@ -593,9 +593,79 @@ Contributions welcome! Please ensure:
 - Follow existing code style and naming conventions
 - Include personalization features in new developments
 
+## Cloud Database (Supabase)
+
+As of v1.4.0, the project includes a full **Supabase** cloud database module (`src/database/`) for authentication and data persistence. This is designed for the **upcoming website** — the CLI, Streamlit GUI, and desktop GUI continue to use local file storage and are unaffected.
+
+### Database Architecture
+
+| Table | Purpose |
+|-------|---------|
+| `profiles` | User accounts — extends Supabase auth with 10 demographic/writing fields |
+| `style_analyses` | Style analysis results (replaces JSON files for web users) |
+| `generated_content` | AI-generated articles, emails, stories |
+| `style_transfers` | Style-transferred content |
+| `style_comparisons` | Comparison results between two profiles |
+
+All tables have **Row Level Security (RLS)** — each user can only access their own data.
+
+### Quick Setup
+
+1. Create a free project at [supabase.com](https://supabase.com)
+2. Copy your URL and anon key from **Project Settings → API**
+3. Create a `.env` file:
+   ```
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_ANON_KEY=eyJhbGciOi...your-key
+   ```
+4. Run the migration in **Supabase Dashboard → SQL Editor**:
+   ```
+   # Copy and run the contents of src/database/migration.sql
+   ```
+5. Install dependencies:
+   ```bash
+   pip install supabase python-dotenv
+   ```
+
+### Usage
+
+```python
+# Authentication
+from src.database.auth import sign_up, sign_in, sign_out, reset_password
+
+result = sign_up("user@example.com", "password123", "Alice")
+result = sign_in("user@example.com", "password123")
+token = result["data"]["access_token"]
+user_id = result["data"]["user_id"]
+
+# Save/load style analyses
+from src.database.db_analyses import save_analysis, list_analyses, get_analysis
+
+save_analysis(token, user_id, analysis_data)
+analyses = list_analyses(token, user_id)
+
+# Generated content & style transfers
+from src.database.db_content import save_generated_content, save_style_transfer
+
+# User profile management
+from src.database.db_profiles import get_user_profile, update_user_profile
+```
+
+All functions return a consistent `{success, data, error}` dict.
+
 ## Version History
 
-- **v1.1.0** (Current): **Firebase-Free Local Edition**
+- **v1.4.0** (Current): **Supabase Cloud Database Edition**
+  - ✅ Supabase integration with full cloud database support
+  - ✅ User authentication (signup, login, logout, password reset)
+  - ✅ Row Level Security — each user can only access their own data
+  - ✅ 5 database tables: profiles, style_analyses, generated_content, style_transfers, style_comparisons
+  - ✅ Complete CRUD operations via `src/database/` module
+  - ✅ Auto-profile creation on user signup (database trigger)
+  - ✅ Ready for future website integration
+  - ✅ Local file storage still works independently (CLI/GUI/Streamlit unchanged)
+
+- **v1.1.0**: **Firebase-Free Local Edition**
   - ✅ Complete Firebase removal for privacy-first architecture
   - ✅ PyPI distribution with simplified installation
   - ✅ One-line PowerShell installers for Windows

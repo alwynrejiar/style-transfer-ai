@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="style-transfer-ai",
-    version="1.1.0",
+    version="1.4.0",
     description="Advanced stylometry analysis system with modular architecture",
     author="Style Transfer AI Team",
     packages=find_packages(),
