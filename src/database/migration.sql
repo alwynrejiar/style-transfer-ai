@@ -21,6 +21,22 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     writing_experience TEXT CHECK (writing_experience IN ('Beginner', 'Intermediate', 'Advanced', 'Professional')),
     writing_frequency TEXT CHECK (writing_frequency IN ('Daily', 'Weekly', 'Monthly', 'Rarely')),
     preferred_model TEXT DEFAULT 'gemma3:1b',
+
+    -- Writing style identity (populated from analysis results)
+    vocabulary_level       TEXT,              -- e.g. "intermediate", "advanced"
+    avg_sentence_length    DOUBLE PRECISION,  -- words per sentence
+    formality_level        TEXT,              -- e.g. "formal", "semi-formal", "casual"
+    tone_profile           TEXT,              -- e.g. "analytical", "conversational", "persuasive"
+    readability_score      DOUBLE PRECISION,  -- Flesch reading ease (0-100)
+    grade_level            DOUBLE PRECISION,  -- Flesch-Kincaid grade level
+    style_fingerprint      TEXT,              -- One-line style summary
+    dominant_traits        JSONB DEFAULT '[]'::jsonb,  -- Top 5 writing traits
+    writing_strengths      JSONB DEFAULT '[]'::jsonb,  -- What they do well
+    writing_weaknesses     JSONB DEFAULT '[]'::jsonb,  -- Areas to improve
+    preferred_content_types JSONB DEFAULT '[]'::jsonb,  -- e.g. ["article", "essay", "email"]
+    total_analyses_count   INTEGER DEFAULT 0,           -- How many analyses they've run
+    last_analysis_at       TIMESTAMPTZ,                 -- When they last ran an analysis
+
     created_at      TIMESTAMPTZ DEFAULT now(),
     updated_at      TIMESTAMPTZ DEFAULT now()
 );
