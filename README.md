@@ -682,7 +682,7 @@ All functions return a consistent `{success, data, error}` dict.
 
 ## License
 
-Copyright (c) 2025 Alwyn Rejicser. All Rights Reserved.
+Copyright (c) 2025 Alwyn Reji. All Rights Reserved.
 
 PROPRIETARY AND CONFIDENTIAL
 
