@@ -26,6 +26,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const supabase = createClient();
 
+  const clearPersistedAuthState = useCallback(() => {
+    // Supabase stores session tokens in browser storage under sb-*-auth-token keys.
+    if (typeof window === "undefined") return;
+
+    const clearStorage = (storage: Storage) => {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < storage.length; i += 1) {
+        const key = storage.key(i);
+        if (!key) continue;
+        if ((key.startsWith("sb-") && key.includes("-auth-token")) || key.includes("supabase.auth.token")) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach((key) => storage.removeItem(key));
+    };
+
+    try {
+      clearStorage(window.localStorage);
+      clearStorage(window.sessionStorage);
+    } catch (err) {
+      console.warn("Failed to clear persisted auth storage:", err);
+    }
+
+    setSession(null);
+    setUser(null);
+    useAppStore.getState().setUser(null);
+  }, []);
+
   useEffect(() => {
     // Get initial session
     const syncUser = async (session: Session | null) => {
@@ -124,9 +152,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore errors on sign-out
     }
-    useAppStore.getState().setUser(null);
+    clearPersistedAuthState();
     router.push("/login");
-  }, [supabase, router]);
+  }, [supabase, router, clearPersistedAuthState]);
 
   const deleteAccount = useCallback(async () => {
     try {
@@ -140,15 +168,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         console.warn("Expected error on sign out after deletion:", err);
       }
-      
-      // Manually force clear the front-end store immediately
-      useAppStore.getState().setUser(null);
+
+      clearPersistedAuthState();
       router.push("/login");
       return { error: null };
     } catch (e: any) {
       return { error: e.message || "Account deletion failed" };
     }
-  }, [supabase, router]);
+  }, [supabase, router, clearPersistedAuthState]);
 
   const signInWithOAuth = useCallback(
     async (provider: "github" | "google") => {
@@ -157,6 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           provider,
           options: {
             redirectTo: `${window.location.origin}/chat`,
+            queryParams: provider === "google" ? { prompt: "select_account" } : undefined,
           },
         });
       } catch (e: any) {

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Mail, Lock, Eye, EyeOff, Github, User } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -110,11 +110,7 @@ export function SignupForm() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Button variant="outline" className="w-full" onClick={() => signInWithOAuth("github")}>
-            <Github className="h-4 w-4 mr-2" />
-            GitHub
-          </Button>
+        <div className="grid grid-cols-1 gap-3">
           <Button variant="outline" className="w-full" onClick={() => signInWithOAuth("google")}>
             <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
               <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />

@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
-  Plus, Search, Wand2, GitCompare, Settings, LogOut, Phone, Menu,
+  Plus, Search, Wand2, GitCompare, FileSearch, GraduationCap, Settings, LogOut, Phone, Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,6 +19,8 @@ const primaryNav = [
   { icon: Search, label: "Search Chat", href: "/chat?search=true" },
   { icon: Wand2, label: "Style Transformation", href: "/chat?mode=transfer" },
   { icon: GitCompare, label: "Style Comparison", href: "/chat?mode=compare" },
+  { icon: FileSearch, label: "Style Analysis", href: "/chat?mode=analyze" },
+  { icon: GraduationCap, label: "Student Analogy", href: "/chat?mode=student-analogy" },
 ];
 
 const bottomNav = [
