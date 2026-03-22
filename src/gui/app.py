@@ -74,6 +74,7 @@ class StyleTransferApp:
         # Shared state -------------------------------------------------------
         self._model_var = ctk.StringVar(value="gemma3:1b")
         self._use_local_var = ctk.BooleanVar(value=True)
+        self._gemini_api_key_var = ctk.StringVar(value="")
         self._analogy_enabled_var = ctk.BooleanVar(value=ANALOGY_AUGMENTATION_ENABLED)
         self._analogy_domain_var = ctk.StringVar(value=DEFAULT_ANALOGY_DOMAIN)
 
@@ -274,6 +275,7 @@ class StyleTransferApp:
 
     def _analysis_worker(self, text: str, analogy_on: bool, domain: str) -> None:
         try:
+            self._ensure_gemini_setup()
             from src.analysis.analyzer import create_enhanced_style_profile
 
             input_data = {
@@ -284,7 +286,7 @@ class StyleTransferApp:
             profile = create_enhanced_style_profile(
                 input_data,
                 use_local=self._use_local_var.get(),
-                model_name=self._model_var.get() if self._use_local_var.get() else None,
+                model_name=self._model_var.get(),
                 processing_mode="fast",
                 analogy_augmentation=analogy_on,
                 analogy_domain=domain,
@@ -467,7 +469,7 @@ class StyleTransferApp:
                 analogy_result = injector.augment_text(
                     text,
                     use_local=self._use_local_var.get(),
-                    model_name=self._model_var.get() if self._use_local_var.get() else None,
+                model_name=self._model_var.get(),
                 )
 
             self.root.after(0, self._display_bridging_result, density, analogy_result)
@@ -619,7 +621,7 @@ class StyleTransferApp:
                 transfer_type="direct_transfer",
                 intensity=intensity,
                 use_local=self._use_local_var.get(),
-                model_name=self._model_var.get() if self._use_local_var.get() else None,
+                model_name=self._model_var.get(),
             )
             self.root.after(0, self._display_transfer_result, result)
         except Exception as exc:
@@ -717,6 +719,29 @@ class StyleTransferApp:
     # PAGE: Settings
     # ==================================================================
 
+    def _on_model_changed(self, selected: str) -> None:
+        """Show/hide the Gemini API key frame based on model selection."""
+        if selected == "gemini":
+            self._use_local_var.set(False)
+            self._gemini_key_frame.pack(fill="x", pady=(0, 5))
+        else:
+            self._gemini_key_frame.pack_forget()
+
+    def _ensure_gemini_setup(self) -> None:
+        """If Gemini is selected, ensure the client is configured with the API key."""
+        if self._model_var.get() != "gemini":
+            return
+        from src.models.gemini_client import setup_gemini_client, check_gemini_connection
+        ok, _ = check_gemini_connection()
+        if ok:
+            return
+        key = self._gemini_api_key_var.get().strip()
+        if not key:
+            raise ValueError("Gemini API key is required. Enter it in Settings.")
+        ok, msg = setup_gemini_client(api_key=key)
+        if not ok:
+            raise RuntimeError(f"Gemini setup failed: {msg}")
+
     def _page_settings(self) -> None:
         ctk.CTkLabel(self.page_container, text="Settings", font=_FONT_HEADING).pack(pady=(5, 10))
 
@@ -735,7 +760,8 @@ class StyleTransferApp:
         ctk.CTkLabel(model_frame, text="Model Name:", font=_FONT_BODY).pack(anchor="w", padx=10, pady=(5, 0))
         model_names = list(AVAILABLE_MODELS.keys())
         ctk.CTkOptionMenu(
-            model_frame, values=model_names, variable=self._model_var, font=_FONT_BODY
+            model_frame, values=model_names, variable=self._model_var,
+            font=_FONT_BODY, command=self._on_model_changed,
         ).pack(anchor="w", padx=10, pady=2)
 
         for name, info in AVAILABLE_MODELS.items():
@@ -744,6 +770,23 @@ class StyleTransferApp:
                 text=f"  {name}: {info['description']} ({info['type']})",
                 font=("Segoe UI", 10),
             ).pack(anchor="w", padx=20)
+
+        # Gemini API key entry (shown for Gemini model)
+        self._gemini_key_frame = ctk.CTkFrame(model_frame)
+        ctk.CTkLabel(self._gemini_key_frame, text="Gemini API Key:", font=_FONT_BODY).pack(anchor="w", padx=10, pady=(5, 0))
+        ctk.CTkEntry(
+            self._gemini_key_frame, textvariable=self._gemini_api_key_var,
+            placeholder_text="Enter your Google Gemini API key",
+            font=_FONT_BODY, show="*", width=400,
+        ).pack(anchor="w", padx=10, pady=2)
+        ctk.CTkLabel(
+            self._gemini_key_frame,
+            text="Get a key at: https://aistudio.google.com/apikey",
+            font=("Segoe UI", 10), text_color="gray",
+        ).pack(anchor="w", padx=20)
+        # Only show the key frame when gemini is selected
+        if self._model_var.get() == "gemini":
+            self._gemini_key_frame.pack(fill="x", pady=(0, 5))
 
         # Analogy defaults
         ctk.CTkLabel(scroll, text="Analogy Engine Defaults", font=_FONT_SUBHEADING).pack(anchor="w", pady=(15, 2))

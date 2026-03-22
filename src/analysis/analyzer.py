@@ -123,11 +123,8 @@ def compute_readability_metrics(text: str) -> dict:
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SECTION 2 — PASS PROMPT TEMPLATES
-# "full" variants: original high-detail prompts (slower, more thorough)
-# "fast" variants: ~40% fewer tokens, same JSON schema (faster per-pass)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# ── Full (original) prompts ──────────────────────────────────────────────────
 _PASS_PROMPTS_FULL: dict[str, str] = {
 
     "lexical": textwrap.dedent("""
@@ -183,7 +180,7 @@ _PASS_PROMPTS_FULL: dict[str, str] = {
 
         WRITING SAMPLE:
         ---
-        {text}
+        REPLACE_TEXT_HERE
         ---
     """),
 
@@ -236,7 +233,7 @@ _PASS_PROMPTS_FULL: dict[str, str] = {
 
         WRITING SAMPLE:
         ---
-        {text}
+        REPLACE_TEXT_HERE
         ---
     """),
 
@@ -280,7 +277,7 @@ _PASS_PROMPTS_FULL: dict[str, str] = {
 
         WRITING SAMPLE:
         ---
-        {text}
+        REPLACE_TEXT_HERE
         ---
     """),
 
@@ -320,7 +317,7 @@ _PASS_PROMPTS_FULL: dict[str, str] = {
 
         WRITING SAMPLE:
         ---
-        {text}
+        REPLACE_TEXT_HERE
         ---
     """),
 
@@ -362,7 +359,7 @@ _PASS_PROMPTS_FULL: dict[str, str] = {
 
         WRITING SAMPLE:
         ---
-        {text}
+        REPLACE_TEXT_HERE
         ---
     """),
 
@@ -424,7 +421,7 @@ _PASS_PROMPTS_FULL: dict[str, str] = {
 
         WRITING SAMPLE:
         ---
-        {text}
+        REPLACE_TEXT_HERE
         ---
     """),
 
@@ -466,14 +463,14 @@ _PASS_PROMPTS_FULL: dict[str, str] = {
 
         ANALYSIS RESULTS FROM ALL 6 PASSES:
         ---
-        {analysis_json}
+        REPLACE_ANALYSIS_JSON_HERE
         ---
     """),
 }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# SECTION 3 — MODEL CALL WRAPPER (unchanged from v3.0)
+# SECTION 3 — MODEL CALL WRAPPER
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _call_model_for_json(
@@ -487,14 +484,63 @@ def _call_model_for_json(
 ) -> dict:
     from ..models.ollama_client import analyze_with_ollama
 
+    # ── Auto-resolve: if model_name is a cloud model, override use_local ──
+    # This handles legacy callers that hardcode use_local=True but pass a
+    # cloud model key (e.g. "gemini") as model_name.
+    _GEMINI_NAMES = {"gemini", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"}
+    if use_local and model_name in _GEMINI_NAMES:
+        use_local = False
+        if not api_type:
+            api_type = "gemini"
+        if not api_client:
+            import os
+            api_client = os.environ.get("GEMINI_API_KEY", "")
+
     try:
         if model_name == "remote-ollama":
             from ..models.remote_ollama_client import analyze_with_remote_ollama
             raw = analyze_with_remote_ollama(prompt, processing_mode=processing_mode)
+
+        elif api_type == "gemini" or model_name in _GEMINI_NAMES:
+            # ── Gemini cloud API ───────────────────────────────────────────
+            from ..models.gemini_client import analyze_with_gemini
+            from ..config.settings import PROCESSING_MODES
+            if not api_client:
+                import os
+                api_client = os.environ.get("GEMINI_API_KEY", "")
+            if not api_client:
+                return {
+                    "_pass_error": "Gemini API key not found. Set GEMINI_API_KEY env var.",
+                    "_pass_name": pass_name,
+                }
+            mode = PROCESSING_MODES.get(processing_mode, PROCESSING_MODES["fast"])
+            # Support both legacy gemini signature and current project signature.
+            try:
+                raw = analyze_with_gemini(
+                    prompt,
+                    api_key_or_client=api_client,
+                    temperature=mode.get("temperature", 0.2),
+                    max_tokens=mode.get("gemma_tokens", 3000),
+                )
+            except TypeError:
+                raw = analyze_with_gemini(prompt, processing_mode=processing_mode)
+
         elif use_local:
             raw = analyze_with_ollama(prompt, model_name, processing_mode=processing_mode)
+
+        elif api_type == "openai":
+            from ..models.openai_client import analyze_with_openai
+            raw = analyze_with_openai(prompt, api_client, processing_mode=processing_mode)
+
         else:
-            return {"_pass_error": "Unknown API type", "_pass_name": pass_name}
+            return {
+                "_pass_error": (
+                    f"Unknown API type: {api_type!r}. Pass api_type='gemini' or 'openai' "
+                    "with api_client, or set use_local=True for Ollama."
+                ),
+                "_pass_name": pass_name,
+            }
+
     except Exception as e:
         return {"_pass_error": f"Model call failed: {e}", "_pass_name": pass_name}
 
@@ -520,7 +566,7 @@ def _call_model_for_json(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# SECTION 4 — PASS RUNNERS (now parallel-aware)
+# SECTION 4 — PASS RUNNERS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _run_pass(
@@ -538,7 +584,15 @@ def _run_pass(
         prompt_dict = _PASS_PROMPTS_FULL
 
     pass_start = time.time()
-    prompt = prompt_dict[pass_name].format(text=text)
+
+    # ── FIX: use .replace() instead of .format() ──────────────────────────────
+    # The prompt templates contain JSON schema examples with curly braces
+    # (e.g. {"formality_level": "..."}) which cause Python's .format() to raise
+    # KeyError on every JSON field name it finds in the template.
+    # .replace() substitutes only the exact placeholder and ignores all other
+    # curly braces in the template.
+    prompt = prompt_dict[pass_name].replace("REPLACE_TEXT_HERE", text)
+
     result = _call_model_for_json(
         prompt, use_local, model_name, api_type, api_client, pass_name, processing_mode
     )
@@ -567,7 +621,10 @@ def _run_synthesis_pass(
         indent=2,
         default=str,
     )
-    prompt = prompt_dict["synthesis"].format(analysis_json=prior_json)
+
+    # ── FIX: use .replace() instead of .format() ──────────────────────────────
+    prompt = prompt_dict["synthesis"].replace("REPLACE_ANALYSIS_JSON_HERE", prior_json)
+
     result = _call_model_for_json(
         prompt, use_local, model_name, api_type, api_client, "synthesis", processing_mode
     )
@@ -624,12 +681,7 @@ def _build_confidence_report(pass_results: dict[str, dict], synthesis: dict) -> 
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# SECTION 6 — PUBLIC API: analyze_style  ← MAIN OPTIMIZATION HERE
-#
-# CHANGE: passes 1-6 now run concurrently via ThreadPoolExecutor.
-# max_workers=6 runs all passes simultaneously (ideal for cloud APIs).
-# For Ollama (single-threaded local model), set max_workers=2 or 3
-# to avoid overloading the model server.
+# SECTION 6 — PUBLIC API: analyze_style
 # ═══════════════════════════════════════════════════════════════════════════════
 
 _ANALYSIS_PASSES = ("lexical", "syntactic", "voice", "discourse", "rhythm", "psycholinguistic")
@@ -646,32 +698,13 @@ def analyze_style(
 ) -> dict:
     """
     Performs a comprehensive 7-pass structured stylometric analysis.
-
     Passes 1-6 run IN PARALLEL, then synthesis runs sequentially.
-
-    Args:
-        text_to_analyze (str): The writing sample.
-        use_local (bool): Use Ollama if True, else cloud API.
-        model_name (str): Ollama model name (required if use_local=True).
-        api_type (str): 'openai' or 'gemini' (required if use_local=False).
-        api_client: Pre-initialized API client.
-        processing_mode (str): 'fast' or 'thorough'.
-        max_workers (int): Parallel threads for passes 1-6.
-                           Default: 6 for cloud APIs, 2 for local Ollama.
-                           Tune down if you hit API rate limits.
-
-    Returns:
-        dict with keys: passes, synthesis, readability_metrics,
-                        confidence_report, rewrite_directive, etc.
     """
     if use_local and not model_name:
         raise ValueError("model_name is required when use_local=True")
     if not use_local and (not api_type or not api_client):
         raise ValueError("api_type and api_client are required when use_local=False")
 
-    # ── Determine parallelism ─────────────────────────────────────────────────
-    # Ollama runs one request at a time locally — 2-3 workers is a safe ceiling.
-    # Cloud APIs handle concurrent requests well — use up to 6.
     if max_workers is None:
         max_workers = 2 if use_local else 6
 
@@ -681,13 +714,11 @@ def analyze_style(
     print(f"  Mode: {processing_mode.upper()} | Workers: {max_workers} parallel passes")
     print("  Passes 1-6 run simultaneously → synthesis when all done\n")
 
-    # ── Compute readability locally (instant, no model call) ─────────────────
     print("  ⟳ Computing readability metrics (local)... ", end="", flush=True)
     readability_metrics = compute_readability_metrics(text_to_analyze)
     print(f"✔  (Flesch Ease: {readability_metrics['flesch_reading_ease']} — "
           f"{readability_metrics['flesch_reading_ease_label']})")
 
-    # ── Run passes 1-6 IN PARALLEL ────────────────────────────────────────────
     analysis_start = time.time()
     pass_results: dict[str, dict] = {}
     print(f"  ⟳ Launching {len(_ANALYSIS_PASSES)} passes in parallel...")
@@ -714,7 +745,6 @@ def analyze_style(
     parallel_elapsed = time.time() - analysis_start
     print(f"\n  All 6 passes done in {parallel_elapsed:.1f}s (parallel)")
 
-    # ── Run synthesis (needs all 6 pass results) ──────────────────────────────
     successful_passes = sum(1 for v in pass_results.values() if "_pass_error" not in v)
     if successful_passes >= 2:
         print("  ⟳ Pass [synthesis]...", end=" ", flush=True)
@@ -735,7 +765,6 @@ def analyze_style(
     total_elapsed = time.time() - analysis_start
     print(f"\n  Total analysis time: {total_elapsed:.1f}s ({int(total_elapsed/60)}m {int(total_elapsed%60)}s)")
 
-    # ── Build confidence report ───────────────────────────────────────────────
     confidence_report = _build_confidence_report(pass_results, synthesis)
 
     print("╚══ 7-Pass Style Analysis Complete ══╝\n")
@@ -755,7 +784,7 @@ def analyze_style(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# SECTION 7 — PUBLIC API: create_enhanced_style_profile (unchanged logic)
+# SECTION 7 — PUBLIC API: create_enhanced_style_profile
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def create_enhanced_style_profile(
@@ -767,11 +796,10 @@ def create_enhanced_style_profile(
     processing_mode: str = "fast",
     analogy_augmentation: bool | None = None,
     analogy_domain: str | None = None,
-    max_workers: int | None = None,  # NEW: pass through to analyze_style
+    max_workers: int | None = None,
 ) -> dict:
     """
     Creates a comprehensive style profile from text samples or direct input.
-    max_workers controls parallelism in the underlying analyze_style calls.
     """
     if use_local and not model_name:
         raise ValueError("model_name is required when use_local=True")
@@ -881,8 +909,8 @@ def create_enhanced_style_profile(
             "combined_text_length":  len(combined_text),
             "file_info":             file_info,
         },
-        "individual_analyses":      all_analyses,
-        "consolidated_analysis":    consolidated,
+        "individual_analyses":       all_analyses,
+        "consolidated_analysis":     consolidated,
         "cognitive_bridging":        analogy_result,
         "rewrite_directive":         consolidated.get("rewrite_directive", ""),
         "style_fingerprint_summary": consolidated.get("style_fingerprint_summary", ""),
