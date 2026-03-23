@@ -39,11 +39,20 @@ body.menu-open {
 
 /* ── CUSTOM CURSOR ── */
 @media (pointer: fine) {
-    body {
+    body.custom-cursor-enabled {
         cursor: none;
     }
 
-    a, button, input, textarea, select, .btn, .play-btn, .team-card, .feat, .step-node {
+    body.custom-cursor-enabled a,
+    body.custom-cursor-enabled button,
+    body.custom-cursor-enabled input,
+    body.custom-cursor-enabled textarea,
+    body.custom-cursor-enabled select,
+    body.custom-cursor-enabled .btn,
+    body.custom-cursor-enabled .play-btn,
+    body.custom-cursor-enabled .team-card,
+    body.custom-cursor-enabled .feat,
+    body.custom-cursor-enabled .step-node {
         cursor: none;
     }
 }

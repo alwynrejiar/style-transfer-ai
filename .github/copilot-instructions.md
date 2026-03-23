@@ -2,94 +2,108 @@
 
 ## Architecture Overview
 
-Modular Python package (`src/`) with three interfaces: interactive CLI, Streamlit web GUI, and a desktop CustomTkinter GUI.
+Current primary surface is a FastAPI backend plus a static vanilla JS app.
 
-### Entry Points
-- **CLI**: `python scripts/run.py` → `src.main:cli_entry_point` → `src/menu/main_menu.py:run_main_menu()`
-- **Streamlit GUI**: `streamlit run app.py` → sidebar routing to `gui/*.py` page modules (each exposes `show()`)
-- **Desktop GUI**: `python scripts/run_gui.py` → CustomTkinter app in `src/gui/app.py`
-- **PyPI console script**: `style-transfer-ai` (after `pip install style-transfer-ai`)
+- Core library: `src/`
+- API server: `api.py`
+- Browser app (sidebar UI): `app/`
+- Public marketing/docs: `docs/`
 
-### Module Layout (`src/`)
+Legacy CLI/GUI code still exists, but active product flow is API + `app/`.
+
+## Active Entry Points
+
+- API + app runtime:
+  - `python -m uvicorn api:app --host 127.0.0.1 --port 8000`
+  - App URL: `/app`
+  - Docs URL: `/docs/index.html`
+- CLI (legacy): `python scripts/run.py`
+
+## Current Web App Structure
+
+- Shell: `app/index.html`
+- Styling: `app/css/app.css` (imports `docs/css/style.css`)
+- Router: `app/js/router.js` (hash routes)
+- Auth/session: `app/js/auth.js`
+- API client: `app/js/api.js`
+- Sidebar nav: `app/js/components/navbar.js`
+- Pages:
+  - `app/js/pages/analyze.js`
+  - `app/js/pages/studentAnalogy.js`
+  - `app/js/pages/profiles.js`
+  - `app/js/pages/generate.js`
+  - `app/js/pages/compare.js`
+  - `app/js/pages/settings.js`
+
+## FastAPI Surface (`api.py`)
+
+### Auth
+- `POST /api/auth/signup`
+- `POST /api/auth/signin`
+- `POST /api/auth/signout`
+
+### Analysis / Generation
+- `POST /api/analyze` (NDJSON stream)
+  - event types: `pass`, `heartbeat`, `result`, `error`
+- `POST /api/generate` (text stream)
+- `POST /api/transfer`
+
+### Profiles / Comparisons
+- `GET /api/profiles`
+- `POST /api/profiles`
+- `GET /api/profiles/{profile_id}`
+- `DELETE /api/profiles/{profile_id}`
+- `POST /api/comparisons`
+- `GET /api/comparisons`
+
+### Health
+- `GET /api/health`
+
+## Core Library Map (`src/`)
+
 | Module | Purpose | Key exports |
 |---|---|---|
-| `config/settings.py` | All constants: `AVAILABLE_MODELS`, `PROCESSING_MODES`, API URLs, file paths | Import constants here; never hardcode |
-| `models/` | One client per provider: `ollama_client.py`, `remote_ollama_client.py` | `analyze_with_*()`, `setup_*_client()` |
-| `analysis/` | `analyzer.py` (orchestrator), `prompts.py` (25-point prompt), `metrics.py` (readability + Burrows' Delta), `analogy_engine.py` (cognitive bridging) | `analyze_style()`, `create_enhanced_style_profile()`, `detect_conceptual_density()`, `AnalogyInjector` |
-| `generation/` | `ContentGenerator`, `StyleTransfer`, `QualityController`, `GenerationTemplates` | `generate_content()`, `transfer_style()`, `compare_styles()` |
-| `storage/local_storage.py` | Dual-format save (JSON + TXT) with personalized filenames | `save_style_profile_locally()` |
-| `menu/` | `main_menu.py` (~1600 lines, 14 menu options), `model_selection.py` (global state), `navigation.py` (UI helpers) | `run_main_menu()` |
-| `utils/` | `text_processing.py` (file I/O, sanitization), `formatters.py` (report output), `user_profile.py` | Shared helpers |
-| `gui/app.py` | Desktop CustomTkinter app: analyze, cognitive bridging, transfer, profiles, settings | `StyleTransferApp` |
+| `analysis/analyzer.py` | 7-pass stylometric analysis orchestration | `analyze_style`, `create_enhanced_style_profile` |
+| `analysis/metrics.py` | readability + deep stylometry + similarity | `calculate_style_similarity`, `extract_deep_stylometry` |
+| `analysis/analogy_engine.py` | cognitive bridging support | `detect_conceptual_density`, `AnalogyInjector` |
+| `generation/content_generator.py` | style-conditioned generation | `ContentGenerator.generate_content` |
+| `generation/style_transfer.py` | rewriting/transfer | `StyleTransfer.transfer_style` |
+| `database/auth.py` | Supabase auth wrappers | `sign_in`, `sign_up`, `sign_out`, `get_current_user` |
+| `database/db_analyses.py` | saved style profile CRUD | `save_analysis`, `list_analyses`, `get_analysis`, `delete_analysis` |
+| `database/db_comparisons.py` | saved comparison CRUD | `save_comparison`, `list_comparisons` |
+| `database/db_content.py` | generated content persistence | `save_generated_content` |
+| `config/settings.py` | model/mode constants | `AVAILABLE_MODELS`, `PROCESSING_MODES`, URLs |
 
-### Data Flow
-```
-User Input → model_selection (global state) → analyzer.analyze_style()
-  → prompts.create_enhanced_deep_prompt() → models/*_client.analyze_with_*()
-  → metrics (readability, Burrows' Delta) → storage.save_style_profile_locally()
-  → dual output: JSON + TXT in "stylometry fingerprints/"
+## Conventions and Rules
 
-# Optional cognitive bridging layer:
-analyzer.create_enhanced_style_profile(analogy_augmentation=True)
-  → analogy_engine.detect_conceptual_density() → AnalogyInjector.augment_analysis_result()
-  → [Cognitive Note: …] blocks appended to output
-```
+- Import constants from `src/config/settings.py`; do not hardcode model/mode constants.
+- Keep API response shape consistent: `{ "success": bool, "data": ..., "error": ... }`.
+- Preserve auth flow using bearer token from `/api/auth/signin`.
+- `app/` is plain JS (no build tooling). Keep dependencies browser-native.
+- Sidebar navigation is the primary feature launcher; new features should be routed via `router.js` and linked in `navbar.js`.
+- Keep docs changes minimal; `docs/` is mostly read-only except explicit user requests.
 
-## Model Integration Patterns
-
-Two models in `AVAILABLE_MODELS`, both type `ollama`. Uniform call pattern:
-
-```python
-# Every model client: analyze_with_*(prompt, ...) → str
-# Ollama:  requests.post("http://localhost:11434/api/generate", json=payload)
-```
-
-**Global model state** in `src/menu/model_selection.py`: module-level `USE_LOCAL_MODEL`, `SELECTED_MODEL`, `USER_CHOSEN_API_KEY`. Reset via `reset_model_selection()`.
-
-**Adding a new model**: (1) Add to `AVAILABLE_MODELS` in `settings.py`, (2) create/update client in `src/models/`, (3) add `elif` in `analyzer.analyze_style()` and `model_selection.validate_model_selection()`.
-
-## Key Conventions
-
-- **File encoding**: Use `read_text_file()` from `src/utils/text_processing.py` — tries UTF-8 then latin-1
-- **Output filenames**: `{name}_stylometric_profile_{YYYYMMDD_HHMMSS}.json/.txt`
-- **Dual output**: Every analysis saves both JSON and TXT via `save_dual_format()`
-- **API keys**: Placeholder strings `"your-openai-api-key-here"` in committed code; entered interactively at runtime
-- **Circular import avoidance**: `src/__init__.py` has empty `__all__`; model clients are imported lazily inside `analyzer.analyze_style()`
-- **Menu handlers**: Each CLI feature is a `handle_*()` function in `main_menu.py`, dispatched by `run_main_menu()`
-- **Analogy engine**: Opt-in per request via `analogy_augmentation` param; global default in `ANALOGY_AUGMENTATION_ENABLED`. Analogies are always rendered as `[Cognitive Note: …]` blocks to preserve primary output
-- **Desktop GUI**: `src/gui/app.py` provides a full CustomTkinter interface with threaded LLM calls; import via `from src.gui.app import StyleTransferApp`
-
-## Running & Testing
+## Running Locally
 
 ```bash
-# Core dependencies
-pip install requests spacy streamlit plotly
+# dependencies
+pip install fastapi uvicorn requests supabase spacy
 python -m spacy download en_core_web_sm
 
-# Local models (privacy-first default)
+# local model runtime
 ollama serve
-ollama pull gemma3:1b                 # fast
+ollama pull gemma3:1b
 
-# Launch
-python scripts/run.py                 # CLI
-streamlit run app.py                  # Streamlit GUI
-python scripts/run_gui.py             # Desktop GUI (needs customtkinter matplotlib pillow)
-
-# Tests (import-validation scripts, not pytest)
-python tests/test_modular_implementation.py
-python tests/test_integration_complete.py
-python tests/test_analogy_engine.py
+# start app
+python -m uvicorn api:app --host 127.0.0.1 --port 8000
 ```
 
-Sample texts: `data/samples/`. Generated profiles: `stylometry fingerprints/`.
+Open:
+- `http://127.0.0.1:8000/app`
+- `http://127.0.0.1:8000/docs/index.html`
 
-## Critical Details
+## Notes for Future Changes
 
-- **`main_menu.py` is ~1600 lines** — all 14 CLI features as `handle_*()` functions (option 14 = Cognitive Bridging)
-- **`analogy_engine.py`** — `detect_conceptual_density()` is pure Python (no LLM); `AnalogyInjector` batches dense sentences into a single LLM call
-- **`metrics.py` auto-installs spaCy** at runtime via `_ensure_spacy_model()` if missing
-- **Processing modes**: `"enhanced"` (25-point, temp 0.2, 180s) vs `"statistical"` (basic, temp 0.3, 120s) in `PROCESSING_MODES`
-- **Ollama tokens**: `num_predict` uses `gemma_tokens` setting from `PROCESSING_MODES` (in `ollama_client.py`)
-- **Analogy domains**: 7 built-in domains in `ANALOGY_DOMAINS` (sports, gaming, cooking, nature, daily_life, tech, general_simplification); default = `general_simplification`
-- **Conceptual density threshold**: `CONCEPTUAL_DENSITY_THRESHOLD = 0.45` (0-1 range; most academic text scores 0.45-0.70)
-- **PyInstaller**: `scripts/run.py` and `run_gui.py` detect `sys.frozen` and use `sys._MEIPASS` for bundled paths
+- If a UI element appears unexpectedly at top-level, verify inherited styles from `docs/css/style.css` are overridden in `app/css/app.css`.
+- Analysis can take over a minute depending on sample length and model speed; keep status feedback minimal unless the user asks for detailed progress.
+- Student analogy/cognitive bridging should be implemented via transfer instructions and domain-specific simplification prompts.

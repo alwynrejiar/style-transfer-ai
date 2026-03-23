@@ -205,8 +205,7 @@ GENERATION GUIDELINES:
 3. Use vocabulary and sentence structures matching the profile
 4. Follow the content type conventions while preserving personal style
 5. Ensure natural flow and readability
-6. Target the specified word count (┬▒20%)
-
+6. Target the specified word count (┬▒20%)7. Write EXACTLY ONE single version of the content. Do not generate multiple drafts or alternatives.
 Generate the content now, ensuring it authentically reflects the specified writing style:
 """
         return prompt

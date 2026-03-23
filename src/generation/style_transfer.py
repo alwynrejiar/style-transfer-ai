@@ -375,14 +375,10 @@ Transform the content now:
             if 'paragraph_style' in structure:
                 instructions.append(f"- Paragraph structure: {structure['paragraph_style']}")
         
-        return "\n".join(instructions)
-    
-    def _build_preservation_instructions(self, preserve_elements: List[str]) -> str:
-        """Build instructions for elements to preserve during transfer."""
-        
-        if not preserve_elements:
-            return "No specific preservation requirements."
-        
+        # Deep analysis / instruction-based transfer
+        if 'deep_analysis' in target_style and isinstance(target_style['deep_analysis'], str):
+            instructions.append(f"\nDEEP ANALYSIS / INSTRUCTIONS:\n{target_style['deep_analysis']}")
+
         instructions = ["PRESERVE THE FOLLOWING ELEMENTS:"]
         for element in preserve_elements:
             instructions.append(f"- {element}")
