@@ -542,6 +542,16 @@ def _call_model_for_json(
             }
 
     except Exception as e:
+        msg = str(e)
+        if "429" in msg and "quota" in msg.lower():
+            return {
+                "_pass_error": (
+                    "Gemini quota exceeded. Enable billing, wait for reset, "
+                    "or switch to a local Ollama model."
+                ),
+                "_pass_name": pass_name,
+                "_quota_exceeded": True,
+            }
         return {"_pass_error": f"Model call failed: {e}", "_pass_name": pass_name}
 
     cleaned = re.sub(r"```(?:json)?", "", raw).strip().strip("`").strip()
@@ -708,6 +718,11 @@ def analyze_style(
     if max_workers is None:
         max_workers = 2 if use_local else 6
 
+    # Gemini free-tier can rate-limit quickly; default to serial pass execution
+    # for cloud Gemini to reduce burst requests and clearer error handling.
+    if not use_local and api_type == "gemini" and max_workers > 1:
+        max_workers = 1
+
     prompt_dict = _PASS_PROMPTS_FULL
 
     print("\n╔══ 7-Pass Style Analysis Starting (v3.1 PARALLEL) ══╗")
@@ -731,16 +746,49 @@ def analyze_style(
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(_run_one, p): p for p in _ANALYSIS_PASSES}
+        quota_exceeded_error = None
         for future in as_completed(futures):
             pass_name, result = future.result()
             pass_results[pass_name] = result
             elapsed = result.get("_elapsed_seconds", "?")
             if "_pass_error" in result:
                 print(f"    ✗ [{pass_name}] FAILED ({elapsed}s) — {result['_pass_error']}")
+                if result.get("_quota_exceeded"):
+                    quota_exceeded_error = result["_pass_error"]
+                    for pending in futures:
+                        if not pending.done():
+                            pending.cancel()
+                    print("    ⚠ Stopping remaining passes due to quota exhaustion.")
+                    break
             else:
                 conf_key = f"overall_{pass_name}_confidence"
                 conf = result.get(conf_key, "n/a")
                 print(f"    ✔ [{pass_name}] done ({elapsed}s, confidence: {conf})")
+
+    if quota_exceeded_error:
+        parallel_elapsed = time.time() - analysis_start
+        print(f"\n  Aborted early after {parallel_elapsed:.1f}s due to quota limits.")
+        print("╚══ 7-Pass Style Analysis Complete ══╝\n")
+        return {
+            "passes": pass_results,
+            "synthesis": {"_pass_error": quota_exceeded_error},
+            "readability_metrics": readability_metrics,
+            "confidence_report": {
+                "overall_profile_confidence": 0.0,
+                "rationale": quota_exceeded_error,
+                "per_pass": {},
+                "low_confidence_features": [],
+                "medium_confidence_features": [],
+                "high_confidence_features": [],
+            },
+            "rewrite_directive": "",
+            "style_fingerprint_summary": "",
+            "most_distinctive_traits": [],
+            "key_traits": [],
+            "do_not_lose": [],
+            "avoid_in_rewrite": [],
+            "fatal_error": quota_exceeded_error,
+        }
 
     parallel_elapsed = time.time() - analysis_start
     print(f"\n  All 6 passes done in {parallel_elapsed:.1f}s (parallel)")

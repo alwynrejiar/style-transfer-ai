@@ -16,7 +16,6 @@ AUTHOR = "Style Transfer AI Team"
 OLLAMA_BASE_URL = "http://localhost:11434"
 REMOTE_OLLAMA_DEFAULT_URL = "https://myollamaapi2000.share.zrok.io"
 OPENAI_API_KEY = ""  # Unused – reserved for future cloud providers
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")  # Google Gemini API key
 
 # Available AI Models
 AVAILABLE_MODELS = {
@@ -27,10 +26,6 @@ AVAILABLE_MODELS = {
     "remote-ollama": {
         "description": "Remote Ollama (via tunnel — select model after connecting)",
         "type": "ollama"
-    },
-    "gemini": {
-        "description": "Google Gemini (Cloud API — requires API key)",
-        "type": "gemini"
     }
 }
 

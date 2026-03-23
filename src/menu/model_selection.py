@@ -3,7 +3,7 @@ Model selection module for Style Transfer AI.
 Handles interactive model selection and validation.
 """
 
-from ..config.settings import AVAILABLE_MODELS, OLLAMA_BASE_URL, PROCESSING_MODES, GEMINI_API_KEY
+from ..config.settings import AVAILABLE_MODELS, OLLAMA_BASE_URL, PROCESSING_MODES
 from ..models.ollama_client import check_ollama_connection, pull_ollama_model
 from ..models.remote_ollama_client import (
     setup_remote_ollama,
@@ -11,12 +11,11 @@ from ..models.remote_ollama_client import (
     check_remote_connection,
     get_selected_remote_model,
 )
-from ..models.gemini_client import setup_gemini_client
 
 # Global model selection state
 USE_LOCAL_MODEL = False
 SELECTED_MODEL = None
-SELECTED_API_TYPE = None      # "gemini" | "openai" | None
+SELECTED_API_TYPE = None      # "openai" | None
 SELECTED_API_CLIENT = None    # API key string for cloud models
 USER_CHOSEN_API_KEY = None    # kept for backwards compatibility
 
@@ -110,30 +109,6 @@ def validate_model_selection(model_key):
             'suggestion': f"Run: ollama pull {model_key}"
         }
 
-    # ── Google Gemini API ──────────────────────────────────────────────────
-    elif model_type == 'gemini':
-        key = GEMINI_API_KEY
-        if not key:
-            print("\nGemini requires a Google API key.")
-            print("Get one at: https://aistudio.google.com/apikey")
-            key = input("Enter your Gemini API key: ").strip()
-        else:
-            print("  Using GEMINI_API_KEY from environment.")
-
-        if not key:
-            return {'success': False, 'error': "No API key provided."}
-
-        success, message = setup_gemini_client(api_key=key)
-        if not success:
-            return {'success': False, 'error': message}
-
-        USE_LOCAL_MODEL = False
-        SELECTED_MODEL = model_key
-        SELECTED_API_TYPE = "gemini"
-        SELECTED_API_CLIENT = key
-        USER_CHOSEN_API_KEY = key
-        return {'success': True, 'message': f"✔ {message}"}
-
     # ── OpenAI API ─────────────────────────────────────────────────────────
     elif model_type == 'openai':
         print("\nOpenAI requires an API key.")
@@ -219,7 +194,7 @@ def get_current_model_info():
     create_enhanced_style_profile():
         use_local_model  → bool
         selected_model   → str | None
-        api_type         → "gemini" | "openai" | None
+        api_type         → "openai" | None
         api_client       → API key string | None
         has_model        → bool
         model_type       → str
@@ -266,7 +241,7 @@ def auto_select_best_available_model():
                 }
     return {
         'success': False,
-        'error': 'No Ollama models reachable. Select Gemini manually.'
+        'error': 'No Ollama models reachable. Please install/pull a local model.'
     }
 
 
