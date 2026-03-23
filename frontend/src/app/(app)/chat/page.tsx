@@ -5,6 +5,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { EmptyChat } from "@/components/chat/EmptyChat";
 import { ChatThread } from "@/components/chat/ChatThread";
 import { MeshBackground } from "@/components/background/MeshBackground";
+import { FeatureCycleButton } from "@/components/chat/FeatureCycleButton";
 import { useAppStore } from "@/store/useAppStore";
 import type { Message } from "@/lib/mockData";
 
@@ -75,7 +76,10 @@ Would you like me to perform a deeper analysis or transform this text into a dif
       />
 
       {/* Top bar */}
-      <div className="relative z-10 flex items-center justify-center py-3 border-b border-white/[0.04]">
+      <div className="relative z-10 flex items-center justify-center py-3 min-h-[52px] border-b border-white/[0.04]">
+        <div className="absolute left-14 lg:left-4 top-1/2 -translate-y-1/2">
+          <FeatureCycleButton />
+        </div>
         <span className="text-sm text-white/40">New Chat</span>
       </div>
 

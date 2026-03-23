@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Plus, Search, Wand2, GitCompare, FileSearch, GraduationCap, Settings, LogOut, Phone, Menu,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -13,27 +14,70 @@ import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
+import { STYLE_FEATURES, useStyleFeatureCycle } from "@/hooks/useStyleFeatureCycle";
 
-const primaryNav = [
+const coreNav = [
   { icon: Plus, label: "New Chat", href: "/chat" },
   { icon: Search, label: "Search Chat", href: "/chat?search=true" },
-  { icon: Wand2, label: "Style Transformation", href: "/chat?mode=transfer" },
-  { icon: GitCompare, label: "Style Comparison", href: "/chat?mode=compare" },
-  { icon: FileSearch, label: "Style Analysis", href: "/chat?mode=analyze" },
-  { icon: GraduationCap, label: "Student Analogy", href: "/chat?mode=student-analogy" },
 ];
+
+const styleFeatureIcons: Record<string, LucideIcon> = {
+  transfer: Wand2,
+  compare: GitCompare,
+  analyze: FileSearch,
+  "student-analogy": GraduationCap,
+};
 
 const bottomNav = [
   { icon: Settings, label: "Settings", href: "/settings" },
   { icon: Phone, label: "Contact", href: "/contact" },
 ];
 
-function SidebarContent({ pathname }: { pathname: string }) {
+function isNavItemActive(pathname: string, searchParams: ReturnType<typeof useSearchParams>, href: string) {
+  const [hrefPath, queryString] = href.split("?");
+  if (pathname !== hrefPath) return false;
+
+  if (!queryString) {
+    // "New Chat" should not appear active while another chat mode is selected.
+    if (href === "/chat") {
+      return !searchParams.get("mode") && !searchParams.get("search");
+    }
+    return true;
+  }
+
+  const expectedParams = new URLSearchParams(queryString);
+  for (const [key, value] of expectedParams.entries()) {
+    if (searchParams.get(key) !== value) return false;
+  }
+  return true;
+}
+
+function SidebarContent() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user, chats } = useAppStore();
   const { signOut } = useAuth();
+  const { sidebarStyleFeatures, setHiddenFeatureIndex } = useStyleFeatureCycle();
+
+  const primaryNav = [
+    ...coreNav,
+    ...sidebarStyleFeatures.map((feature) => ({
+      icon: styleFeatureIcons[feature.key],
+      label: feature.label,
+      href: feature.href,
+    })),
+  ];
 
   const handleLogout = async () => {
     await signOut();
+  };
+
+  const handlePrimaryNavClick = (href: string) => {
+    const clickedStyleFeatureIndex = STYLE_FEATURES.findIndex((feature) => feature.href === href);
+    if (clickedStyleFeatureIndex >= 0) {
+      // Swap positions: clicked sidebar style becomes the hidden top-left feature.
+      setHiddenFeatureIndex(clickedStyleFeatureIndex);
+    }
   };
 
   return (
@@ -51,11 +95,12 @@ function SidebarContent({ pathname }: { pathname: string }) {
       {/* Primary Nav */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {primaryNav.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href.split("?")[0]);
+          const isActive = isNavItemActive(pathname, searchParams, item.href);
           return (
             <Link
               key={item.label}
               href={item.href}
+              onClick={() => handlePrimaryNavClick(item.href)}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors duration-150",
                 isActive
@@ -144,14 +189,13 @@ function SidebarContent({ pathname }: { pathname: string }) {
 }
 
 export function Sidebar() {
-  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <>
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-[240px] bg-[#111111] border-r border-white/8 z-40 flex-col">
-        <SidebarContent pathname={pathname} />
+        <SidebarContent />
       </aside>
 
       {/* Mobile hamburger */}
@@ -165,7 +209,7 @@ export function Sidebar() {
           <SheetContent side="left" className="p-0 w-[280px]">
             <SheetTitle className="sr-only">Navigation</SheetTitle>
             <SheetDescription className="sr-only">Application navigation sidebar</SheetDescription>
-            <SidebarContent pathname={pathname} />
+            <SidebarContent />
           </SheetContent>
         </Sheet>
       </div>
