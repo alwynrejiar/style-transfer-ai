@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { ActiveMode } from "@/components/profile/ActiveMode";
 import { UsageSummary } from "@/components/profile/UsageSummary";
-import { SavedModes } from "@/components/profile/SavedModes";
 import { RecentActivity } from "@/components/profile/RecentActivity";
 
 export default function ProfilePage() {
@@ -32,14 +31,6 @@ export default function ProfilePage() {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.16 }}
-        >
-          <SavedModes />
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.24 }}
         >
           <RecentActivity />
@@ -48,3 +39,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+

@@ -26,6 +26,7 @@ from .model_selection import (
 from ..models.ollama_client import list_ollama_models, pull_ollama_model, is_ollama_installed
 from ..utils.user_profile import get_file_paths
 from ..utils.text_processing import read_text_file
+from ..utils.formatters import format_human_readable_output
 from ..generation import ContentGenerator, StyleTransfer, QualityController
 
 
@@ -185,16 +186,29 @@ def handle_view_profiles():
                     result = load_local_profile(selected_profile['filename'])
                     if result['success']:
                         profile_data = result['profile']
-                        display_profile_summary(profile_data)
-                        view_full = input("\nView full human-readable report? (y/n): ").strip().lower()
-                        if view_full == 'y':
-                            if 'human_readable_report' in profile_data:
-                                print("\n" + "="*80)
-                                print("FULL STYLE ANALYSIS REPORT")
-                                print("="*80)
-                                print(profile_data['human_readable_report'])
-                            else:
-                                print("Human-readable report not available in this profile.")
+
+                        # Show full human-readable report immediately after profile selection.
+                        report_text = None
+                        json_path = selected_profile['filename']
+                        txt_path = os.path.splitext(json_path)[0] + ".txt"
+
+                        if os.path.isfile(txt_path):
+                            try:
+                                with open(txt_path, 'r', encoding='utf-8') as f:
+                                    report_text = f.read()
+                            except Exception:
+                                report_text = None
+
+                        if not report_text and isinstance(profile_data.get('human_readable_report'), str):
+                            report_text = profile_data.get('human_readable_report')
+
+                        if not report_text:
+                            report_text = format_human_readable_output(profile_data)
+
+                        print("\n" + "="*80)
+                        print("FULL HUMAN-READABLE STYLE PROFILE")
+                        print("="*80)
+                        print(report_text)
                     else:
                         print(f"Error loading profile: {result['error']}")
                 else:

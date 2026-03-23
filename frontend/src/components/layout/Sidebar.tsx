@@ -170,10 +170,18 @@ function SidebarContent() {
 
         <div className="mx-3 border-t border-white/8" />
 
-        {/* User Card */}
+        {/* User Card — navigates to profile */}
         {user && (
-          <div className="p-3 flex items-center gap-3">
-            <Avatar className="h-9 w-9">
+          <Link
+            href="/profile"
+            className={cn(
+              "p-3 flex items-center gap-3 rounded-xl mx-1 mb-1 transition-colors duration-150 group",
+              pathname === "/profile"
+                ? "bg-white/10"
+                : "hover:bg-white/[0.06] cursor-pointer"
+            )}
+          >
+            <Avatar className="h-9 w-9 ring-2 ring-transparent group-hover:ring-white/20 transition-all">
               <AvatarImage src={user.avatarUrl} alt={user.displayName} />
               <AvatarFallback>{user.displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
@@ -181,7 +189,7 @@ function SidebarContent() {
               <p className="text-sm font-medium text-white truncate">{user.displayName}</p>
               <p className="text-xs text-white/40 truncate">{user.email}</p>
             </div>
-          </div>
+          </Link>
         )}
       </div>
     </div>
