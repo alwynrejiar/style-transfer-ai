@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import { mockChats, mockModes, mockMessages, type User, type Chat, type Message, type Mode } from "@/lib/mockData";
 interface ModelConfig {
   useLocal: boolean;
@@ -38,9 +39,11 @@ interface AppStore {
   setTheme: (theme: "dark" | "light" | "system") => void;
 }
 
-export const useAppStore = create<AppStore>((set) => ({
-  // Auth
-  user: null,
+export const useAppStore = create(
+  persist<AppStore>(
+    (set) => ({
+      // Auth
+      user: null,
   setUser: (user) => set({ user }),
 
   // Chat
@@ -100,4 +103,10 @@ export const useAppStore = create<AppStore>((set) => ({
     })),
   theme: "dark",
   setTheme: (theme) => set({ theme }),
-}));
+    }),
+    {
+      name: "stylomex-storage",
+      partialize: (state) => ({ modelConfig: state.modelConfig, analogyConfig: state.analogyConfig, theme: state.theme } as unknown as AppStore),
+    }
+  )
+);

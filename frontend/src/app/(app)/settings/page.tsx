@@ -85,17 +85,15 @@ export default function SettingsPage() {
               </select>
             </div>
 
-            {modelConfig.modelName === "gemini" && (
-              <div className="space-y-2">
-                <Label>Google Gemini API Key</Label>
-                <Input
-                  type="password"
-                  placeholder="Enter your Google Gemini API key"
-                  value={modelConfig.geminiKey}
-                  onChange={(e) => updateModelConfig({ geminiKey: e.target.value })}
-                />
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label>Google Gemini API Key</Label>
+              <Input
+                type="password"
+                placeholder="Enter your Google Gemini API key"
+                value={modelConfig.geminiKey}
+                onChange={(e) => updateModelConfig({ geminiKey: e.target.value })}
+              />
+            </div>
           </div>
         </motion.div>
 

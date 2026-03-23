@@ -68,6 +68,16 @@ function ChatPageInner() {
       if (!apiKey) {
         setNoKeyBanner(true);
         setIsStreaming(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `msg-${Date.now()}-nokey`,
+            chatId: "new",
+            role: "assistant",
+            content: "No Gemini API key found. Please go to **Settings → Model Config** and paste your key to use Style Analysis.",
+            timestamp: new Date(),
+          },
+        ]);
         return;
       }
 

@@ -6,9 +6,10 @@ import { Smile, Paperclip, Mic, Send } from "lucide-react";
 interface ChatInputProps {
   onSend: (message: string) => void;
   disabled?: boolean;
+  placeholder?: string;
 }
 
-export function ChatInput({ onSend, disabled }: ChatInputProps) {
+export function ChatInput({ onSend, disabled, placeholder }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
@@ -56,7 +57,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         onKeyDown={handleKeyDown}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        placeholder="Type your message here..."
+        placeholder={placeholder || "Type your message here..."}
         disabled={disabled}
         rows={1}
         className="w-full resize-none bg-transparent px-4 pt-4 pb-2 text-sm text-white placeholder:text-white/30 focus:outline-none disabled:opacity-50"
