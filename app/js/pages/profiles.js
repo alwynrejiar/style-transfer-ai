@@ -1,4 +1,4 @@
-﻿import { apiDelete, apiGet } from "../api.js?v=20260324-google-auth-v11";
+import { apiDelete, apiGet } from "../api.js?v=20260324-google-auth-v14";
 import { mountLoader } from "../components/loader.js";
 import { profileCardMarkup } from "../components/profileCard.js";
 
@@ -98,6 +98,7 @@ export async function mountProfilesPage(root) {
 
   await refresh();
 }
+
 
 
 

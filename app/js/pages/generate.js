@@ -1,4 +1,4 @@
-﻿import { apiGet, apiPost, streamGenerate } from "../api.js?v=20260324-google-auth-v11";
+import { apiGet, apiPost, streamGenerate } from "../api.js?v=20260324-google-auth-v14";
 import { mountLoader } from "../components/loader.js";
 
 function formatProfileDate(ds) {
@@ -120,6 +120,7 @@ export async function mountGeneratePage(root) {
   });
 
 }
+
 
 
 

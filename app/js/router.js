@@ -1,11 +1,13 @@
-﻿import { isAuthenticated, showAuthModal } from "./auth.js?v=20260324-google-auth-v11";
-import { renderNavbar } from "./components/navbar.js?v=20260324-google-auth-v11";
-import { mountAnalyzePage } from "./pages/analyze.js?v=20260324-google-auth-v11";
-import { mountStudentAnalogyPage } from "./pages/studentAnalogy.js?v=20260324-google-auth-v11";
-import { mountProfilesPage } from "./pages/profiles.js?v=20260324-google-auth-v11";
-import { mountGeneratePage } from "./pages/generate.js?v=20260324-google-auth-v11";
-import { mountComparePage } from "./pages/compare.js?v=20260324-google-auth-v11";
-import { mountSettingsPage } from "./pages/settings.js?v=20260324-google-auth-v11";
+import { isAuthenticated, showAuthModal } from "./auth.js?v=20260324-google-auth-v14";
+import { renderNavbar } from "./components/navbar.js?v=20260324-google-auth-v14";
+import { mountAnalyzePage } from "./pages/analyze.js?v=20260324-google-auth-v14";
+import { mountStudentAnalogyPage } from "./pages/studentAnalogy.js?v=20260324-google-auth-v14";
+import { mountProfilesPage } from "./pages/profiles.js?v=20260324-google-auth-v14";
+import { mountGeneratePage } from "./pages/generate.js?v=20260324-google-auth-v14";
+import { mountComparePage } from "./pages/compare.js?v=20260324-google-auth-v14";
+import { mountContactPage } from "./pages/contact.js?v=14";
+
+import { mountSettingsPage } from "./pages/settings.js?v=20260324-google-auth-v14";
 
 const APP_ROOT = document.getElementById("app");
 let navbarMounted = false;
@@ -19,6 +21,7 @@ const routes = {
   "#/generate": mountGeneratePage,
   "#/compare": mountComparePage,
   "#/settings": mountSettingsPage,
+  "#/contact": mountContactPage,
 };
 
 function normalizeHash(hash) {
@@ -27,7 +30,7 @@ function normalizeHash(hash) {
 }
 
 function protectedRoute(hash) {
-  return hash !== "#/settings";
+  return hash !== "#/settings" && hash !== "#/contact";
 }
 
 async function renderCurrentRoute() {
@@ -76,6 +79,10 @@ mountNavbarOnce();
 renderCurrentRoute().catch((error) => {
   APP_ROOT.innerHTML = `<div class="toast err">${error.message}</div>`;
 });
+
+
+
+
 
 
 

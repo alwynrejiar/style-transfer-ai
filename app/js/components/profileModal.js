@@ -1,4 +1,4 @@
-﻿import { getSession } from "../auth.js?v=20260324-google-auth-v11";
+import { getSession } from "../auth.js?v=20260324-google-auth-v14";
 
 function getAvatarUrl(email) {
   return localStorage.getItem(`stylomex.avatar.${email}`);
@@ -108,6 +108,7 @@ export function showProfileModal() {
     }
   });
 }
+
 
 
 

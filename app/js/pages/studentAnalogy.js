@@ -1,4 +1,4 @@
-﻿import { apiPost } from "../api.js?v=20260324-google-auth-v11";
+import { apiPost } from "../api.js?v=20260324-google-auth-v14";
 import { mountLoader } from "../components/loader.js";
 
 const ANALOGY_DOMAINS = [
@@ -146,6 +146,7 @@ export async function mountStudentAnalogyPage(root) {
     }
   });
 }
+
 
 
 

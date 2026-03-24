@@ -1,5 +1,5 @@
-﻿import { apiGet, apiPost } from "../api.js?v=20260324-google-auth-v11";
-import { getSession } from "../auth.js?v=20260324-google-auth-v11";
+import { apiGet, apiPost } from "../api.js?v=20260324-google-auth-v14";
+import { getSession } from "../auth.js?v=20260324-google-auth-v14";
 
 const SETTINGS_STORAGE_KEY = "stylomex.settings.v1";
 
@@ -251,6 +251,7 @@ export async function mountSettingsPage(root) {
     }
   });
 }
+
 
 
 
