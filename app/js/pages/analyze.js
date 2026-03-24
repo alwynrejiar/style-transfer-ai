@@ -1,4 +1,4 @@
-import { apiPost, streamAnalyze } from "../api.js";
+﻿import { apiPost, streamAnalyze } from "../api.js?v=20260324-google-auth-v11";
 
 export async function mountAnalyzePage(root) {
   root.innerHTML = `
@@ -115,6 +115,16 @@ export async function mountAnalyzePage(root) {
     }
   });
 }
+
+
+
+
+
+
+
+
+
+
 
 
 

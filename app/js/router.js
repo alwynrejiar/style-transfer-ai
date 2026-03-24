@@ -1,11 +1,11 @@
-import { isAuthenticated, showAuthModal } from "./auth.js";
-import { renderNavbar } from "./components/navbar.js";
-import { mountAnalyzePage } from "./pages/analyze.js";
-import { mountStudentAnalogyPage } from "./pages/studentAnalogy.js";
-import { mountProfilesPage } from "./pages/profiles.js";
-import { mountGeneratePage } from "./pages/generate.js";
-import { mountComparePage } from "./pages/compare.js";
-import { mountSettingsPage } from "./pages/settings.js";
+﻿import { isAuthenticated, showAuthModal } from "./auth.js?v=20260324-google-auth-v11";
+import { renderNavbar } from "./components/navbar.js?v=20260324-google-auth-v11";
+import { mountAnalyzePage } from "./pages/analyze.js?v=20260324-google-auth-v11";
+import { mountStudentAnalogyPage } from "./pages/studentAnalogy.js?v=20260324-google-auth-v11";
+import { mountProfilesPage } from "./pages/profiles.js?v=20260324-google-auth-v11";
+import { mountGeneratePage } from "./pages/generate.js?v=20260324-google-auth-v11";
+import { mountComparePage } from "./pages/compare.js?v=20260324-google-auth-v11";
+import { mountSettingsPage } from "./pages/settings.js?v=20260324-google-auth-v11";
 
 const APP_ROOT = document.getElementById("app");
 let navbarMounted = false;
@@ -76,3 +76,13 @@ mountNavbarOnce();
 renderCurrentRoute().catch((error) => {
   APP_ROOT.innerHTML = `<div class="toast err">${error.message}</div>`;
 });
+
+
+
+
+
+
+
+
+
+

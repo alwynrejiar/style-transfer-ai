@@ -1,4 +1,4 @@
-function confidenceClass(score) {
+﻿function confidenceClass(score) {
   if (score >= 80) return "high";
   if (score >= 60) return "mid";
   return "low";
@@ -48,3 +48,12 @@ export function profileCardMarkup(item) {
     </article>
   `;
 }
+
+
+
+
+
+
+
+
+

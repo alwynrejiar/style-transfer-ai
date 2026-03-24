@@ -1,4 +1,4 @@
-import { getToken, showAuthModal, signOutSession } from "./auth.js";
+﻿import { getToken, showAuthModal, signOutSession } from "./auth.js?v=20260324-google-auth-v11";
 
 function authHeaders(extra = {}) {
   const token = getToken();
@@ -156,3 +156,13 @@ export async function ensureHealthy() {
 }
 
 export { signOutSession };
+
+
+
+
+
+
+
+
+
+

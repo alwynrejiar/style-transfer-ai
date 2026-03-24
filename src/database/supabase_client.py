@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 _client = None
+_admin_client = None
 
 
 def get_supabase_client():
@@ -33,6 +34,28 @@ def get_supabase_client():
 
         _client = create_client(url, key)
     return _client
+
+
+def get_supabase_admin_client():
+    """Return a Supabase client initialized with the service role key.
+
+    This is required for privileged operations like deleting auth users.
+    Returns None if service role credentials are unavailable.
+    """
+    global _admin_client
+    if _admin_client is not None:
+        return _admin_client
+
+    from supabase import create_client
+
+    url = os.environ.get("SUPABASE_URL", "")
+    service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+
+    if not url or not service_key:
+        return None
+
+    _admin_client = create_client(url, service_key)
+    return _admin_client
 
 
 def get_authenticated_client(access_token):

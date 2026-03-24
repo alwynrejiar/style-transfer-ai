@@ -4,7 +4,7 @@ Wraps Supabase Auth for signup, login, logout, and password reset.
 All functions return a consistent dict: {success, data, error}.
 """
 
-from .supabase_client import get_supabase_client
+from .supabase_client import get_authenticated_client, get_supabase_admin_client, get_supabase_client
 
 
 def sign_up(email, password, user_name=""):
@@ -86,6 +86,36 @@ def sign_in(email, password):
         return {"success": False, "data": None, "error": str(e)}
 
 
+def sign_in_with_google(redirect_to: str):
+    """Generate a Google OAuth sign-in URL via Supabase."""
+    try:
+        client = get_supabase_client()
+        result = client.auth.sign_in_with_oauth({
+            "provider": "google",
+            "options": {"redirect_to": redirect_to},
+        })
+
+        oauth_url = getattr(result, "url", None)
+        if not oauth_url and isinstance(result, dict):
+            oauth_url = result.get("url") or (result.get("data") or {}).get("url")
+
+        if oauth_url:
+            return {
+                "success": True,
+                "data": {"url": oauth_url},
+                "error": None,
+            }
+
+        return {
+            "success": False,
+            "data": None,
+            "error": "Could not create Google OAuth URL.",
+        }
+
+    except Exception as e:
+        return {"success": False, "data": None, "error": str(e)}
+
+
 def sign_out():
     """
     Sign out the current user (invalidates the session).
@@ -161,7 +191,7 @@ def get_current_user(access_token):
         return {"success": False, "data": None, "error": str(e)}
 
 
-def update_password(access_token, new_password):
+def update_password(access_token, new_password, refresh_token=""):
     """
     Change the password for the currently authenticated user.
 
@@ -174,9 +204,50 @@ def update_password(access_token, new_password):
     """
     try:
         client = get_supabase_client()
-        client.auth.set_session(access_token, "")
+        client.auth.set_session(access_token, refresh_token or "")
         client.auth.update_user({"password": new_password})
         return {"success": True, "data": None, "error": None}
 
+    except Exception as e:
+        return {"success": False, "data": None, "error": str(e)}
+
+
+def delete_user_content(access_token, user_id):
+    """Delete user-owned content rows before account removal."""
+    try:
+        client = get_authenticated_client(access_token)
+        tables = [
+            "style_comparisons",
+            "generated_content",
+            "style_transfers",
+            "style_analyses",
+            "profiles",
+        ]
+
+        for table_name in tables:
+            client.table(table_name).delete().eq("user_id" if table_name != "profiles" else "id", user_id).execute()
+
+        return {"success": True, "data": None, "error": None}
+    except Exception as e:
+        return {"success": False, "data": None, "error": str(e)}
+
+
+def delete_account(access_token, user_id):
+    """Delete all user data and the auth account when admin key is available."""
+    wipe = delete_user_content(access_token, user_id)
+    if not wipe.get("success"):
+        return wipe
+
+    admin_client = get_supabase_admin_client()
+    if admin_client is None:
+        return {
+            "success": False,
+            "data": None,
+            "error": "Account data deleted, but auth user deletion requires SUPABASE_SERVICE_ROLE_KEY.",
+        }
+
+    try:
+        admin_client.auth.admin.delete_user(user_id)
+        return {"success": True, "data": {"deleted": True}, "error": None}
     except Exception as e:
         return {"success": False, "data": None, "error": str(e)}

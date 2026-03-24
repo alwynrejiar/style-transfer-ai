@@ -1,4 +1,4 @@
-import { apiGet, apiPost, streamGenerate } from "../api.js";
+﻿import { apiGet, apiPost, streamGenerate } from "../api.js?v=20260324-google-auth-v11";
 import { mountLoader } from "../components/loader.js";
 
 function formatProfileDate(ds) {
@@ -113,12 +113,22 @@ export async function mountGeneratePage(root) {
           streamBox.textContent += token;
         },
       });
-      streamBox.innerHTML += "\n\n<strong style='color:green'>✔ Generation Complete</strong>";
+      streamBox.innerHTML += "\n\n<strong style='color:green'>âœ” Generation Complete</strong>";
     } catch (error) {
       streamBox.innerHTML = `<div class='toast err'>${error.message || 'Generation failed'}</div>`;
     }
   });
 
 }
+
+
+
+
+
+
+
+
+
+
 
 

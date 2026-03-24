@@ -14,13 +14,22 @@ from pydantic import BaseModel, Field
 from src.analysis.analyzer import analyze_style
 from src.analysis.metrics import calculate_style_similarity, extract_deep_stylometry
 from src.config.settings import AVAILABLE_MODELS, PROCESSING_MODES
-from src.database.auth import get_current_user, sign_in, sign_out, sign_up
+from src.database.auth import (
+    delete_account,
+    get_current_user,
+    sign_in,
+    sign_in_with_google,
+    sign_out,
+    sign_up,
+    update_password,
+)
 from src.database.db_analyses import delete_analysis, get_analysis, list_analyses, save_analysis
 from src.database.db_comparisons import list_comparisons, save_comparison
 from src.database.db_content import save_generated_content
 from src.database.db_profiles import get_user_profile, update_user_profile
 from src.database.supabase_client import get_supabase_client
 from src.generation import ContentGenerator, StyleTransfer
+from src.analysis.analogy_engine import AnalogyInjector, ANALOGY_DOMAINS
 from src.models.ollama_client import is_ollama_installed, list_ollama_models
 
 app = FastAPI(title="Stylomex API", version="1.0.0")
@@ -93,6 +102,21 @@ class SignInRequest(BaseModel):
     password: str
 
 
+class GoogleAuthStartRequest(BaseModel):
+    redirect_to: Optional[str] = None
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_new_password: str
+    refresh_token: Optional[str] = ""
+
+
+class DeleteAccountRequest(BaseModel):
+    confirm_email: str
+
+
 class AnalyzeRequest(BaseModel):
     text: str
     model: str = "gemma3:1b"
@@ -107,6 +131,13 @@ class GenerateRequest(BaseModel):
     profile_id: Optional[str] = None
     length: Optional[Union[int, str]] = None
     options: Dict[str, Any] = Field(default_factory=dict)
+
+
+class AnalogyRequest(BaseModel):
+    text: str
+    domain: str
+    model_name: Optional[str] = "gemma3:1b"
+    use_local: bool = True
 
 
 class TransferRequest(BaseModel):
@@ -155,12 +186,61 @@ async def api_sign_in(body: SignInRequest):
     return success(result.get("data"))
 
 
+@app.post("/api/auth/google/start")
+async def api_auth_google_start(body: GoogleAuthStartRequest):
+    redirect_to = (body.redirect_to or "").strip() or "http://127.0.0.1:8000/app/"
+    result = await run_in_threadpool(sign_in_with_google, redirect_to)
+    if not result.get("success"):
+        return failure(result.get("error") or "Unable to start Google auth", status_code=400)
+    return success(result.get("data"))
+
+
 @app.post("/api/auth/signout")
 async def api_sign_out(_: AuthContext = Depends(bearer_auth)):
     result = await run_in_threadpool(sign_out)
     if not result.get("success"):
         return failure(result.get("error") or "Sign out failed")
     return success({"signed_out": True})
+
+
+@app.get("/api/auth/me")
+async def api_auth_me(auth: AuthContext = Depends(bearer_auth)):
+    return success({"user_id": auth.user_id, "email": auth.email})
+
+
+@app.post("/api/auth/password")
+async def api_change_password(body: ChangePasswordRequest, auth: AuthContext = Depends(bearer_auth)):
+    if not body.current_password or not body.new_password:
+        return failure("Current password and new password are required.")
+    if body.new_password != body.confirm_new_password:
+        return failure("New password and confirmation do not match.")
+    if len(body.new_password) < 6:
+        return failure("New password must be at least 6 characters.")
+
+    verify = await run_in_threadpool(sign_in, auth.email, body.current_password)
+    if not verify.get("success"):
+        return failure("Current password is incorrect.", status_code=401)
+
+    result = await run_in_threadpool(
+        update_password,
+        auth.access_token,
+        body.new_password,
+        body.refresh_token or "",
+    )
+    if not result.get("success"):
+        return failure(result.get("error") or "Failed to update password")
+    return success({"updated": True})
+
+
+@app.post("/api/account/delete")
+async def api_delete_account(body: DeleteAccountRequest, auth: AuthContext = Depends(bearer_auth)):
+    if (body.confirm_email or "").strip().lower() != (auth.email or "").strip().lower():
+        return failure("Confirmation email does not match the signed-in account.")
+
+    result = await run_in_threadpool(delete_account, auth.access_token, auth.user_id)
+    if not result.get("success"):
+        return failure(result.get("error") or "Failed to delete account")
+    return success({"deleted": True})
 
 
 @app.post("/api/analyze")
@@ -285,6 +365,44 @@ async def api_generate(body: GenerateRequest, auth: AuthContext = Depends(bearer
             await run_in_threadpool(save_generated_content, auth.access_token, auth.user_id, content_data)
 
     return StreamingResponse(stream(), media_type="text/plain; charset=utf-8")
+
+
+@app.post("/api/analogy")
+async def api_analogy(body: AnalogyRequest):
+    if not is_ollama_installed():
+        return failure("Model unavailable — is Ollama running?", status_code=503)
+
+    if not body.text or not body.text.strip():
+        return failure("Please provide input text for analogy generation.", status_code=400)
+
+    if body.domain not in ANALOGY_DOMAINS:
+        return failure(f"Invalid domain. Must be one of: {list(ANALOGY_DOMAINS.keys())}", status_code=400)
+
+    try:
+        injector = AnalogyInjector(domain=body.domain)
+        result = await run_in_threadpool(
+            injector.augment_text,
+            body.text,
+            use_local=body.use_local,
+            model_name=body.model_name
+        )
+
+        expanded_text = result.get("expanded_text", "")
+        analogy_output = result.get("augmented_text", "")
+        if not analogy_output.strip():
+            # Keep API useful even if the model returns an empty transform.
+            analogy_output = expanded_text
+
+        return success({
+            "expanded_text": expanded_text,
+            "analogy_output": analogy_output,
+            "stages_run": result.get("stages_run", []),
+            "analogy_count": result.get("analogy_count", 0),
+            "density_report": result.get("density_report", {}),
+            "domain": body.domain
+        })
+    except Exception as e:
+        return failure(str(e), status_code=500)
 
 
 @app.post("/api/transfer")

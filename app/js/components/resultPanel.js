@@ -1,4 +1,4 @@
-function toSafeText(value) {
+﻿function toSafeText(value) {
   return String(value ?? "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
@@ -58,3 +58,12 @@ export function analysisResultMarkup(result) {
     </section>
   `;
 }
+
+
+
+
+
+
+
+
+

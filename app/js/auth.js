@@ -1,8 +1,30 @@
-const STORAGE_KEY = "stylomex.session";
+﻿const STORAGE_KEY = "stylomex.session";
 const SUPABASE_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js";
 
 let session = null;
 let supabaseClient = null;
+
+function consumeOAuthHashSession() {
+  const rawHash = window.location.hash || "";
+  if (!rawHash.includes("access_token=")) return;
+
+  const params = new URLSearchParams(rawHash.replace(/^#/, ""));
+  const accessToken = params.get("access_token") || "";
+  if (!accessToken) return;
+
+  const refreshToken = params.get("refresh_token") || "";
+  const expiresIn = Number(params.get("expires_in") || 0);
+  const now = Math.floor(Date.now() / 1000);
+
+  saveSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    expires_at: expiresIn ? now + expiresIn : undefined,
+  });
+
+  // Clear OAuth fragment and restore app routing hash.
+  window.location.hash = "#/analyze";
+}
 
 function emitAuthChange() {
   window.dispatchEvent(new CustomEvent("auth:change", { detail: session }));
@@ -50,6 +72,7 @@ export async function ensureSupabase() {
 }
 
 restoreSession();
+consumeOAuthHashSession();
 ensureSupabase().catch(() => {});
 
 export function getSession() {
@@ -86,6 +109,20 @@ function renderAuthModal(mode = "signin") {
           <button class="auth-tab ${mode === "signup" ? "active" : ""}" data-tab="signup">Create account</button>
         </div>
 
+        <button type="button" class="btn auth-google-btn" id="auth-google">
+          <span class="auth-google-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" role="img" focusable="false">
+              <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-.9 2.3-1.9 3l3 2.3c1.8-1.6 2.9-4.1 2.9-7 0-.7-.1-1.5-.2-2.2H12z"/>
+              <path fill="#34A853" d="M12 21c2.6 0 4.8-.9 6.4-2.4l-3-2.3c-.8.5-1.9.9-3.4.9-2.6 0-4.8-1.8-5.6-4.1l-3.1 2.4C4.8 18.9 8.1 21 12 21z"/>
+              <path fill="#4A90E2" d="M6.4 13.1c-.2-.5-.3-1.1-.3-1.7s.1-1.2.3-1.7L3.3 7.3C2.5 8.8 2 10.3 2 12s.5 3.2 1.3 4.7l3.1-2.4z"/>
+              <path fill="#FBBC05" d="M12 6.8c1.4 0 2.7.5 3.7 1.4l2.8-2.8C16.8 3.8 14.6 3 12 3 8.1 3 4.8 5.1 3.3 8.3l3.1 2.4C7.2 8.6 9.4 6.8 12 6.8z"/>
+            </svg>
+          </span>
+          <span>Continue with Google</span>
+        </button>
+
+        <div class="auth-divider"><span>or continue with email</span></div>
+
         <form id="auth-form" novalidate>
           <div id="auth-name-wrap" class="${mode === "signup" ? "" : "hidden"}">
             <label for="auth-name">Name</label>
@@ -110,10 +147,35 @@ function renderAuthModal(mode = "signin") {
   `;
 
   const tabs = root.querySelectorAll(".auth-tab");
+  let googleBtn = root.querySelector("#auth-google");
   const nameWrap = root.querySelector("#auth-name-wrap");
   const submitBtn = root.querySelector("#auth-submit");
   const feedback = root.querySelector("#auth-feedback");
   const form = root.querySelector("#auth-form");
+
+  if (!googleBtn) {
+    const tabsWrap = root.querySelector(".auth-tabs");
+    if (tabsWrap) {
+      tabsWrap.insertAdjacentHTML(
+        "afterend",
+        `
+          <button type="button" class="btn auth-google-btn" id="auth-google">
+            <span class="auth-google-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" role="img" focusable="false">
+                <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-.9 2.3-1.9 3l3 2.3c1.8-1.6 2.9-4.1 2.9-7 0-.7-.1-1.5-.2-2.2H12z"/>
+                <path fill="#34A853" d="M12 21c2.6 0 4.8-.9 6.4-2.4l-3-2.3c-.8.5-1.9.9-3.4.9-2.6 0-4.8-1.8-5.6-4.1l-3.1 2.4C4.8 18.9 8.1 21 12 21z"/>
+                <path fill="#4A90E2" d="M6.4 13.1c-.2-.5-.3-1.1-.3-1.7s.1-1.2.3-1.7L3.3 7.3C2.5 8.8 2 10.3 2 12s.5 3.2 1.3 4.7l3.1-2.4z"/>
+                <path fill="#FBBC05" d="M12 6.8c1.4 0 2.7.5 3.7 1.4l2.8-2.8C16.8 3.8 14.6 3 12 3 8.1 3 4.8 5.1 3.3 8.3l3.1 2.4C7.2 8.6 9.4 6.8 12 6.8z"/>
+              </svg>
+            </span>
+            <span>Continue with Google</span>
+          </button>
+          <div class="auth-divider"><span>or continue with email</span></div>
+        `,
+      );
+      googleBtn = root.querySelector("#auth-google");
+    }
+  }
 
   let currentMode = mode;
 
@@ -129,6 +191,30 @@ function renderAuthModal(mode = "signin") {
   });
 
   root.querySelector("#auth-close")?.addEventListener("click", hideAuthModal);
+
+  googleBtn?.addEventListener("click", async () => {
+    feedback.className = "toast hidden";
+    feedback.textContent = "";
+
+    try {
+      const redirectTo = `${window.location.origin}/app/`;
+      const response = await fetch("/api/auth/google/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ redirect_to: redirectTo }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.success || !result?.data?.url) {
+        throw new Error(result.error || "Unable to start Google sign in.");
+      }
+
+      window.location.href = result.data.url;
+    } catch (error) {
+      feedback.className = "toast err";
+      feedback.textContent = error.message || "Google sign in failed.";
+    }
+  });
 
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -226,3 +312,12 @@ export async function signOutSession() {
   saveSession(null);
   window.location.href = "/docs/index.html";
 }
+
+
+
+
+
+
+
+
+

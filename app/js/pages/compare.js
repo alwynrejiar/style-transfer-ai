@@ -1,4 +1,4 @@
-import { apiGet, apiPost, streamAnalyze } from "../api.js";
+﻿import { apiGet, apiPost, streamAnalyze } from "../api.js?v=20260324-google-auth-v11";
 import { mountLoader } from "../components/loader.js";
 
 function itemOptions(items) {
@@ -161,4 +161,14 @@ export async function mountComparePage(root) {
     }
   });
 }
+
+
+
+
+
+
+
+
+
+
 

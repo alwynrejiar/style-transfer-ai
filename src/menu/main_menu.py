@@ -10,11 +10,10 @@ from ..config.settings import (
     AVAILABLE_MODELS,
     ANALOGY_DOMAINS,
     DEFAULT_ANALOGY_DOMAIN,
-    CONCEPTUAL_DENSITY_THRESHOLD,
 )
 from ..analysis.analyzer import create_enhanced_style_profile
 from ..analysis.metrics import calculate_style_similarity, extract_deep_stylometry
-from ..analysis.analogy_engine import detect_conceptual_density, AnalogyInjector
+from ..analysis.analogy_engine import run_analogy_cli
 from ..storage.local_storage import list_local_profiles, load_local_profile, save_style_profile_locally, delete_profile
 from .model_selection import (
     select_model_interactive,
@@ -1016,91 +1015,10 @@ def handle_cognitive_bridging():
             print("No model selected. Returning.")
             return
 
-        print("\nHow would you like to provide text?")
-        print("  1. Type / paste content")
-        print("  2. Load from file path")
-        choice = input("Choice (1/2): ").strip()
-        text = ""
-        if choice == "2":
-            path = input("File path: ").strip().strip('"').strip("'")
-            try:
-                with open(path, 'r', encoding='utf-8') as f:
-                    text = f.read()
-                print(f"Loaded {len(text)} characters from file.")
-            except Exception as e:
-                print(f"Cannot read file: {e}")
-                return
-        else:
-            print("Paste or type your text below.")
-            print("When finished, press Enter on an empty line:")
-            lines = []
-            while True:
-                try:
-                    line = input()
-                except EOFError:
-                    break
-                if line == "" and lines:
-                    break
-                lines.append(line)
-            text = "\n".join(lines)
-
-        if not text.strip():
-            print("No text provided.")
-            return
-
-        density = detect_conceptual_density(text)
-        print(f"\nOverall conceptual density: {density['overall_density']:.3f}")
-        print(f"High-density passages (>={CONCEPTUAL_DENSITY_THRESHOLD}): {density['high_density_count']}")
-
-        if density['high_density_count'] == 0:
-            print("\nNo passages exceed the density threshold — no analogies needed.")
-            input("\nPress Enter to continue...")
-            return
-
-        print("\nSelect analogy domain:")
-        domains = list(ANALOGY_DOMAINS.items())
-        for i, (key, info) in enumerate(domains, 1):
-            print(f"  {i}. {info['label']}")
-        d_choice = input(f"Choice (1-{len(domains)}) [{len(domains)}]: ").strip()
-        try:
-            d_idx = int(d_choice) - 1
-            domain = domains[d_idx][0] if 0 <= d_idx < len(domains) else DEFAULT_ANALOGY_DOMAIN
-        except (ValueError, IndexError):
-            domain = DEFAULT_ANALOGY_DOMAIN
-
-        print(f"\nGenerating analogies (domain: {ANALOGY_DOMAINS[domain]['label']})...")
-        injector = AnalogyInjector(domain=domain)
-
-        # ── FIXED ──────────────────────────────────────────────────────────
-        result = injector.augment_text(
-            text,
-            use_local=model_info['use_local_model'],
+        run_analogy_cli(
             model_name=model_info['selected_model'],
-            api_type=model_info['api_type'],
-            api_client=model_info['api_client'],
+            use_local=model_info['use_local_model'],
         )
-
-        print(f"\nGenerated {result['analogy_count']} cognitive note(s).")
-        if result['analogy_count'] > 0:
-            print("\n" + "="*60)
-            print("ANALOGY BREAKDOWN")
-            print("="*60)
-            for i, item in enumerate(result.get('analogies', []), 1):
-                preview = item['source_sentence'][:100]
-                if len(item['source_sentence']) > 100:
-                    preview += "..."
-                print(f"\n  {i}. [{item['density_score']:.2f}] \"{preview}\"")
-                if item.get('concept'):
-                    print(f"     Concept:  {item['concept']}")
-                print(f"     Analogy:  {item['analogy']}")
-                if item.get('example'):
-                    print(f"     Example:  {item['example']}")
-            print()
-            print("="*60)
-            print("AUGMENTED TEXT (original + cognitive notes)")
-            print("="*60)
-            print(result['augmented_text'])
-            print("="*60)
 
         reset_model_selection()
         input("\nPress Enter to continue...")
