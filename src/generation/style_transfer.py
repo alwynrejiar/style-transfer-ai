@@ -386,6 +386,7 @@ Transform the content now:
         if not preserve_elements:
             return "No specific preservation requirements."
 
+        instructions = [f"- Preserve {item}" for item in preserve_elements]
         return "\n".join(instructions)
     
     def _execute_transfer(
