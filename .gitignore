@@ -1,5 +1,6 @@
 # API Keys and Sensitive Data
 .env
+app/js/config.js
 *.key
 api_keys.txt
 secrets.json

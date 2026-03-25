@@ -1,0 +1,29 @@
+name: Deploy Stylomex
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -e
+            if [ ! -d /opt/stylomex/style-transfer-ai/.git ]; then
+              sudo mkdir -p /opt/stylomex
+              sudo chown -R $USER:$USER /opt/stylomex
+              cd /opt/stylomex
+              git clone https://github.com/${{ github.repository }}.git style-transfer-ai
+            fi
+            cd /opt/stylomex/style-transfer-ai
+            chmod +x deploy/deploy.sh
+            PROJECT_DIR=/opt/stylomex/style-transfer-ai ./deploy/deploy.sh

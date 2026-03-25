@@ -1,0 +1,17 @@
+[Unit]
+Description=Stylomex FastAPI Service
+After=network.target ollama.service
+Wants=ollama.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/stylomex/style-transfer-ai
+EnvironmentFile=/opt/stylomex/style-transfer-ai/.env
+ExecStart=/opt/stylomex/style-transfer-ai/.venv/bin/uvicorn api:app --host 127.0.0.1 --port 8000 --workers 2 --proxy-headers
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
