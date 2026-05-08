@@ -8,6 +8,12 @@ function formatProfileDate(ds) {
   });
 }
 
+function getProfileDisplayName(profile) {
+  const label = profile?.analysis_name || profile?.name || "";
+  if (label && String(label).trim()) return String(label).trim();
+  return `Profile ${profile?.id || ""}`.trim();
+}
+
 export async function mountGeneratePage(root) {
   root.innerHTML = `
     <section class="container page-enter">
@@ -63,7 +69,7 @@ export async function mountGeneratePage(root) {
 
           <div style="margin-top: 30px;">
             <label style="font-weight: 600; font-size: 0.95rem; margin-bottom: 8px; display: block;">Generated Output</label>
-            <div id="gen-stream" class="stream-box report-pre" style="min-height: 200px; background: #fafafa; border: 1px solid #ddd; border-radius: 6px; padding: 16px; white-space: pre-wrap; font-family: var(--font-body);"><span class="muted" style="color: #888;">Your generated content will appear here...</span></div>
+            <div id="gen-stream" class="gen-output-box" style="min-height: 200px; background: #fafafa; border: 1px solid #ddd; border-radius: 6px; padding: 16px; white-space: pre-wrap; color: #111318; opacity: 1;"><span class="muted" style="color: #666;">Your generated content will appear here...</span></div>
           </div>
         </article>
       </section>
@@ -74,6 +80,12 @@ export async function mountGeneratePage(root) {
   const streamBox = root.querySelector("#gen-stream");
   const profileSelect = root.querySelector("#gen-profile");
 
+  if (streamBox) {
+    streamBox.style.color = "#111318";
+    streamBox.style.webkitTextFillColor = "#111318";
+    streamBox.style.opacity = "1";
+  }
+
   try {
     const res = await apiGet("/api/profiles");
     const profiles = Array.isArray(res) ? res : (res.data || []);
@@ -81,7 +93,7 @@ export async function mountGeneratePage(root) {
     profiles.forEach(p => {
       const opt = document.createElement("option");
       opt.value = p.id;
-      opt.textContent = p.name ? `${p.name} (${formatProfileDate(p.created_at)})` : `Profile ${p.id}`;
+      opt.textContent = `${getProfileDisplayName(p)} (${formatProfileDate(p.created_at)})`;
       profileSelect.appendChild(opt);
     });
   } catch (err) {
@@ -113,7 +125,12 @@ export async function mountGeneratePage(root) {
           streamBox.textContent += token;
         },
       });
-      streamBox.innerHTML += "\n\n<strong style='color:green'>âœ” Generation Complete</strong>";
+      const done = document.createElement("div");
+      done.style.marginTop = "12px";
+      done.style.color = "#128a45";
+      done.style.fontWeight = "600";
+      done.textContent = "Generation complete";
+      streamBox.appendChild(done);
     } catch (error) {
       streamBox.innerHTML = `<div class='toast err'>${error.message || 'Generation failed'}</div>`;
     }

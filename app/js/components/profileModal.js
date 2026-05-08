@@ -1,4 +1,4 @@
-import { getSession } from "../auth.js?v=20260324-google-auth-v14";
+import { getSession } from "../auth.js?v=20260504-logo-v2";
 
 function getAvatarUrl(email) {
   return localStorage.getItem(`stylomex.avatar.${email}`);

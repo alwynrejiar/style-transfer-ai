@@ -43,7 +43,7 @@ export async function mountStudentAnalogyPage(root) {
         
         <div style="margin-top: 20px;">
           <label style="font-weight: 600; font-size: 0.95rem; margin-bottom: 8px; display: block;">Prepared Content</label>
-          <div id="gen-stream" class="stream-box report-pre" style="min-height: 150px; background: #fafafa; border: 1px solid #ddd; border-radius: 6px; padding: 16px; white-space: pre-wrap; font-family: var(--font-body);"><span class="muted" style="color: #888;">Expanded content will appear here...</span></div>
+          <div id="gen-stream" class="analogy-output-box" style="min-height: 150px; max-height: 380px; background: #fafafa; border: 1px solid #ddd; border-radius: 6px; padding: 16px; white-space: pre-wrap; color: #111318; overflow-y: auto; overflow-x: hidden;"><span class="muted" style="color: #666;">Expanded content will appear here...</span></div>
         </div>
       </section>
 
@@ -64,7 +64,7 @@ export async function mountStudentAnalogyPage(root) {
 
       <section class="card" id="final-output-card" style="margin-top:14px; display: none;">
         <h3 class="section-title">Step 3: Final Analogy Output</h3>
-        <div id="analogy-output" class="report-pre" style="white-space: pre-wrap; font-family: var(--font-body); min-height: 100px;">Output will appear here.</div>
+        <div id="analogy-output" class="analogy-output-box" style="white-space: pre-wrap; min-height: 120px; max-height: 460px; color: #111318; overflow-y: auto; overflow-x: hidden;">Output will appear here.</div>
       </section>
     </section>
   `;
@@ -77,6 +77,18 @@ export async function mountStudentAnalogyPage(root) {
   const finalOutputCard = root.querySelector("#final-output-card");
 
   let expandedText = "";
+
+  if (streamBox) {
+    streamBox.style.color = "#111318";
+    streamBox.style.webkitTextFillColor = "#111318";
+    streamBox.style.opacity = "1";
+  }
+
+  if (outputEl) {
+    outputEl.style.color = "#111318";
+    outputEl.style.webkitTextFillColor = "#111318";
+    outputEl.style.opacity = "1";
+  }
 
   topicForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -106,7 +118,14 @@ export async function mountStudentAnalogyPage(root) {
         throw new Error("No content returned from backend.");
       }
       
-      streamBox.innerHTML = `<div>${expandedText}</div>\n\n<strong style="color:green">OK - Content Ready</strong>`;
+      streamBox.textContent = expandedText;
+      const ready = document.createElement("div");
+      ready.style.marginTop = "10px";
+      ready.style.color = "#128a45";
+      ready.style.fontWeight = "600";
+      ready.textContent = "Content ready";
+      streamBox.appendChild(ready);
+      streamBox.scrollTop = 0;
       
       step2Section.style.display = "block";
     } catch (error) {
@@ -141,6 +160,7 @@ export async function mountStudentAnalogyPage(root) {
 
       const output = stripConceptMapSection(String(data.analogy_output || "").trim());
       outputEl.textContent = output || "No output returned.";
+      outputEl.scrollTop = 0;
     } catch (error) {
       outputEl.innerHTML = `<div class="toast err">${error.message || "Error occurred"}</div>`;
     }

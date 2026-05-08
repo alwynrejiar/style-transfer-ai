@@ -1,4 +1,4 @@
-import { getToken, showAuthModal, signOutSession } from "./auth.js?v=20260324-google-auth-v14";
+import { getToken, showAuthModal, signOutSession } from "./auth.js?v=20260504-logo-v2";
 
 function authHeaders(extra = {}) {
   const token = getToken();

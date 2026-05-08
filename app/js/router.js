@@ -1,13 +1,13 @@
-import { isAuthenticated, showAuthModal } from "./auth.js?v=20260324-google-auth-v14";
-import { renderNavbar } from "./components/navbar.js?v=20260324-google-auth-v14";
-import { mountAnalyzePage } from "./pages/analyze.js?v=20260324-google-auth-v14";
-import { mountStudentAnalogyPage } from "./pages/studentAnalogy.js?v=20260324-google-auth-v14";
-import { mountProfilesPage } from "./pages/profiles.js?v=20260324-google-auth-v14";
-import { mountGeneratePage } from "./pages/generate.js?v=20260324-google-auth-v14";
-import { mountComparePage } from "./pages/compare.js?v=20260324-google-auth-v14";
+import { isAuthenticated, showAuthModal } from "./auth.js?v=20260504-logo-v2";
+import { renderNavbar } from "./components/navbar.js?v=20260429-theme-v2";
+import { mountAnalyzePage } from "./pages/analyze.js?v=20260325-analogy-fix-v19";
+import { mountStudentAnalogyPage } from "./pages/studentAnalogy.js?v=20260325-analogy-fix-v19";
+import { mountProfilesPage } from "./pages/profiles.js?v=20260325-analogy-fix-v19";
+import { mountGeneratePage } from "./pages/generate.js?v=20260325-analogy-fix-v19";
+import { mountComparePage } from "./pages/compare.js?v=20260325-analogy-fix-v19";
 import { mountContactPage } from "./pages/contact.js?v=14";
 
-import { mountSettingsPage } from "./pages/settings.js?v=20260324-google-auth-v14";
+import { mountSettingsPage } from "./pages/settings.js?v=20260325-analogy-fix-v19";
 
 const APP_ROOT = document.getElementById("app");
 let navbarMounted = false;

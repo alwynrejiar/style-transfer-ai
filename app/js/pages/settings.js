@@ -1,5 +1,5 @@
 import { apiGet, apiPost } from "../api.js?v=20260324-google-auth-v14";
-import { getSession } from "../auth.js?v=20260324-google-auth-v14";
+import { getSession } from "../auth.js?v=20260504-logo-v2";
 
 const SETTINGS_STORAGE_KEY = "stylomex.settings.v1";
 
