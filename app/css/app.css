@@ -1729,6 +1729,16 @@ input[type="range"].settings-slider::-webkit-slider-thumb:hover {
   }
 }
 
+body:not(.dark) #analyze-text,
+body:not(.dark) #author-name {
+  border: 1px solid var(--ink, #1a1916);
+}
+
+body:not(.dark) #analyze-stream {
+  border: 1px solid var(--ink, #1a1916);
+  border-radius: 14px;
+}
+
 /* Stylomex.AI theme overrides */
 body.dark {
   --app-bg: #000000;
