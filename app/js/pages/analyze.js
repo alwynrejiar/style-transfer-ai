@@ -116,31 +116,28 @@ function readableAnalysisMarkup(result) {
 
 export async function mountAnalyzePage(root) {
   root.innerHTML = `
-    <section class="container page-enter">
+    <section class="container page-enter page-form-balance">
       <header class="page-head">
         <h1 class="page-title">Style Analysis</h1>
-        <p class="page-subtitle">Run a multi-pass stylometric analysis on your writing sample.</p>
       </header>
 
-      <div class="card">
-        <form id="analyze-form" class="stack-form">
-          <label for="author-name">Profile Name</label>
-          <input id="author-name" name="name" type="text" placeholder="e.g. Austen sample" />
-          
-          <label for="analyze-text">Text to Analyze</label>
-          <textarea id="analyze-text" name="text" rows="10" placeholder="Paste at least a few paragraphs for stronger results" required></textarea>
-          
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
-            <button type="submit" class="btn btn-dark btn-glow">Analyze</button>
-            <button type="button" class="btn" id="analyze-save">Save Profile</button>
-          </div>
-          
-          <div>
-            <label>Generated Profile Output</label>
-            <div id="analyze-stream" class="stream-box analyze-output-box" style="min-height: 200px; max-height: 460px; padding: 15px; white-space: pre-wrap; overflow-y: auto; overflow-x: hidden;">Awaiting analysis...</div>
-          </div>
-        </form>
-      </div>
+      <form id="analyze-form" class="stack-form">
+        <label for="author-name">Profile Name</label>
+        <input id="author-name" name="name" type="text" placeholder="e.g. Austen sample" />
+        
+        <label for="analyze-text">Text to Analyze</label>
+        <textarea id="analyze-text" name="text" rows="10" placeholder="Paste at least a few paragraphs for stronger results" required></textarea>
+        
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
+          <button type="submit" class="btn btn-dark btn-glow">Analyze</button>
+          <button type="button" class="btn" id="analyze-save">Save Profile</button>
+        </div>
+        
+        <div>
+          <label>Generated Profile Output</label>
+          <div id="analyze-stream" class="stream-box analyze-output-box" style="min-height: 200px; max-height: 460px; padding: 15px; white-space: pre-wrap; overflow-y: auto; overflow-x: hidden;">Awaiting analysis...</div>
+        </div>
+      </form>
 
       <p id="analyze-status" class="muted" style="margin-top: 15px;">Run analysis, then click Save Profile.</p>
       <section id="analyze-feedback"></section>

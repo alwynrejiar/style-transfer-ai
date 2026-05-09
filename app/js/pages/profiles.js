@@ -41,7 +41,6 @@ export async function mountProfilesPage(root) {
     <section class="container page-enter">
       <header class="page-head">
         <h1 class="page-title">Saved Profiles</h1>
-        <p class="page-subtitle">Browse your stylometric fingerprints and open full reports.</p>
       </header>
 
       <section id="profiles-grid" class="profile-grid"></section>

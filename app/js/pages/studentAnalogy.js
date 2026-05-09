@@ -25,15 +25,10 @@ export async function mountStudentAnalogyPage(root) {
   root.innerHTML = `
     <section class="container page-enter">
       <header class="page-head">
-        <h1 class="page-title">Student Analogy (v2)</h1>
-        <p class="page-subtitle">Cognitive Load Optimization: enter content, choose an analogy type, then get the final analogy output.</p>
+        <h1 class="page-title">Student Analogy</h1>
       </header>
 
       <section class="card" style="margin-bottom: 20px;">
-        <h3 class="section-title">Step 1: Enter Your Content</h3>
-        <p class="section-desc" style="margin-bottom: 12px; font-size: 0.9rem; color: #666;">
-          Tell us what content you want the analogy for.
-        </p>
         <form id="topic-form" class="stack-form">
           <label for="topic-input">Content / Topic</label>
           <textarea id="topic-input" name="topic" rows="3" placeholder="e.g., 'solar eclipse' or 'cellular respiration'" required></textarea>
@@ -166,9 +161,6 @@ export async function mountStudentAnalogyPage(root) {
     }
   });
 }
-
-
-
 
 
 

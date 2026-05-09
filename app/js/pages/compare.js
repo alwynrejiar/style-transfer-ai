@@ -10,7 +10,7 @@ function compareBars(result) {
   const overlap = Number(result?.feature_overlap || 0);
 
   return `
-    <div class="compare-bars card">
+    <div class="compare-bars">
       <h3 class="section-title">Comparison Result</h3>
       <div class="metric-row">
         <span>Similarity Score</span>
@@ -28,33 +28,30 @@ function compareBars(result) {
 
 export async function mountComparePage(root) {
   root.innerHTML = `
-    <section class="container page-enter">
+    <section class="container page-enter page-form-balance">
       <header class="page-head">
         <h1 class="page-title">Style Comparison</h1>
-        <p class="page-subtitle">Compare two saved profiles or analyze new text samples.</p>
       </header>
 
-      <section class="card">
-        <form id="compare-form" class="stack-form">
-          <label>Profile A</label>
-          <div style="display:flex; gap:15px; margin-bottom: 8px;">
-            <label style="cursor:pointer;"><input type="radio" name="mode_a" value="saved" checked> Saved Profile</label>
-            <label style="cursor:pointer;"><input type="radio" name="mode_a" value="text"> New Text Data</label>
-          </div>
-          <select id="profile-a"></select>
-          <textarea id="text-a" rows="6" style="display:none;" placeholder="Paste First Text Sample Here..."></textarea>
+      <form id="compare-form" class="stack-form">
+        <label>Profile A</label>
+        <div style="display:flex; gap:15px; margin-bottom: 8px;">
+          <label style="cursor:pointer;"><input type="radio" name="mode_a" value="saved" checked> Saved Profile</label>
+          <label style="cursor:pointer;"><input type="radio" name="mode_a" value="text"> Text Box</label>
+        </div>
+        <select id="profile-a"></select>
+        <textarea id="text-a" rows="6" style="display:none;" placeholder="Paste First Text Sample Here..."></textarea>
 
-          <label style="margin-top:20px;">Profile B</label>
-          <div style="display:flex; gap:15px; margin-bottom: 8px;">
-            <label style="cursor:pointer;"><input type="radio" name="mode_b" value="saved" checked> Saved Profile</label>
-            <label style="cursor:pointer;"><input type="radio" name="mode_b" value="text"> New Text Data</label>
-          </div>
-          <select id="profile-b"></select>
-          <textarea id="text-b" rows="6" style="display:none;" placeholder="Paste Second Text Sample Here..."></textarea>
+        <label style="margin-top:20px;">Profile B</label>
+        <div style="display:flex; gap:15px; margin-bottom: 8px;">
+          <label style="cursor:pointer;"><input type="radio" name="mode_b" value="saved" checked> Saved Profile</label>
+          <label style="cursor:pointer;"><input type="radio" name="mode_b" value="text"> Text Box</label>
+        </div>
+        <select id="profile-b"></select>
+        <textarea id="text-b" rows="6" style="display:none;" placeholder="Paste Second Text Sample Here..."></textarea>
 
-          <button style="margin-top:25px;" type="submit" class="btn btn-dark" id="compare-btn">Compare Styles</button>  
-        </form>
-      </section>
+        <button style="margin-top:25px;" type="submit" class="btn btn-dark" id="compare-btn">Compare Styles</button>  
+      </form>
 
       <section id="compare-result"></section>
     </section>
@@ -82,7 +79,7 @@ export async function mountComparePage(root) {
   try {
     const profiles = await apiGet("/api/profiles");
     if (!profiles.length) {
-      resultEl.innerHTML = "<div class='card'><p class='muted'>You have no saved profiles. Generate them from text inputs.</p></div>";
+      resultEl.innerHTML = "<p class='muted compare-empty-note'>You have no saved profiles. Generate them from text inputs.</p>";
     } else {
       const options = itemOptions(profiles);
       selectA.innerHTML = options;
@@ -106,7 +103,7 @@ export async function mountComparePage(root) {
     await streamAnalyze({ text: textVal.trim(), author_name: nameFallback }, {
         onPass: () => {},
         onProgress: (evt) => {
-           resultEl.innerHTML = `<div class="card"><div class="loader"></div><p class="muted">Analyzing ${nameFallback}... ${Number(evt.elapsed_seconds||0)}s elapsed.</p></div>`;
+           resultEl.innerHTML = `<div><div class="loader"></div><p class="muted">Analyzing ${nameFallback}... ${Number(evt.elapsed_seconds||0)}s elapsed.</p></div>`;
         },
         onResult: (res) => { finalProfile = res; },
         onError: (err) => { throw new Error(err); }

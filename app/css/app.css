@@ -190,6 +190,10 @@ body::after {
   margin-bottom: 18px;
 }
 
+.page-form-balance .page-head {
+  margin-bottom: 30px;
+}
+
 body.light .page-title,
 body.light .page-subtitle,
 body.light .section-title,
@@ -312,6 +316,75 @@ a:focus-visible {
   color: #666 !important;
 }
 
+.gen-layout {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.gen-form-minimal {
+  display: grid;
+  gap: 18px;
+}
+
+.gen-grid-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.gen-field {
+  display: grid;
+  gap: 9px;
+}
+
+.gen-field label,
+.gen-output-label {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.gen-form-minimal input,
+.gen-form-minimal select,
+.gen-form-minimal textarea {
+  font-size: 1rem;
+}
+
+.gen-field-full {
+  grid-column: 1 / -1;
+}
+
+#gen-topic,
+#gen-context {
+  resize: none;
+  height: 112px;
+  min-height: 112px;
+  max-height: 112px;
+  overflow-y: auto;
+}
+
+.gen-submit {
+  margin-top: 4px;
+  width: 100%;
+}
+
+.gen-output-wrap {
+  margin-top: 26px;
+  display: grid;
+  gap: 10px;
+}
+
+.gen-output-minimal {
+  min-height: 280px;
+  border-radius: 12px;
+  border: 1px solid var(--stone);
+  background: var(--off);
+  padding: 16px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  opacity: 1;
+}
+
 .analyze-output-box {
   color: #111318;
   line-height: 1.55;
@@ -354,6 +427,34 @@ a:focus-visible {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.compare-bars {
+  margin-top: 20px;
+}
+
+#compare-form input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ink);
+  vertical-align: text-bottom;
+}
+
+#text-a,
+#text-b {
+  resize: none;
+  height: 180px;
+  min-height: 180px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.compare-empty-note {
+  margin-top: 30px;
+}
+
+body.dark #compare-form input[type="radio"] {
+  accent-color: var(--app-border);
 }
 
 .analysis-metric-grid>div {
@@ -1149,6 +1250,10 @@ input[type="range"].settings-slider::-webkit-slider-thumb:hover {
     grid-template-columns: 1fr;
   }
 
+  .gen-grid-row {
+    grid-template-columns: 1fr;
+  }
+
   .readability-row {
     grid-template-columns: 1fr;
     gap: 4px;
@@ -1739,6 +1844,16 @@ body:not(.dark) #analyze-stream {
   border-radius: 14px;
 }
 
+body:not(.dark) .gen-form-minimal input,
+body:not(.dark) .gen-form-minimal select,
+body:not(.dark) .gen-form-minimal textarea {
+  border: 1px solid var(--ink, #1a1916);
+}
+
+body:not(.dark) #gen-stream {
+  border: 1px solid var(--ink, #1a1916);
+}
+
 /* Stylomex.AI theme overrides */
 body.dark {
   --app-bg: #000000;
@@ -1859,7 +1974,6 @@ body.dark .result-section,
 body.dark .profile-card,
 body.dark .auth-modal-card,
 body.dark .settings-card,
-body.dark .compare-bars,
 body.dark .progress-steps {
   background: var(--app-panel) !important;
   color: var(--app-text);
@@ -1923,6 +2037,11 @@ body.dark #analyze-stream {
   border: 1px solid var(--app-border) !important;
   color: var(--app-text) !important;
   border-radius: 12px !important;
+}
+
+body.dark .gen-output-minimal {
+  background: var(--app-surface) !important;
+  border: 1px solid var(--app-border) !important;
 }
 
 body.dark .analysis-metric-grid > div {

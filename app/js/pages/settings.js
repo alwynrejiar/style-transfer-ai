@@ -63,7 +63,6 @@ export async function mountSettingsPage(root) {
     <section class="container page-enter">
       <header class="page-head">
         <h1 class="page-title">Settings</h1>
-        <p class="page-subtitle">Configure your application preferences.</p>
       </header>
 
       <form id="settings-form" class="settings-layout">
@@ -251,7 +250,6 @@ export async function mountSettingsPage(root) {
     }
   });
 }
-
 
 
 

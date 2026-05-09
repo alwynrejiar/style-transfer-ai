@@ -16,62 +16,72 @@ function getProfileDisplayName(profile) {
 
 export async function mountGeneratePage(root) {
   root.innerHTML = `
-    <section class="container page-enter">
+    <section class="container page-enter page-form-balance">
       <header class="page-head">
         <h1 class="page-title">Generate and Transfer</h1>
-        <p class="page-subtitle">Create original content based on a style profile or transfer existing text.</p>
       </header>
 
-      <section class="gen-two-col" style="display: flex; gap: 40px; flex-wrap: wrap;">
-        <article class="card" style="flex: 1; min-width: 300px;">
-          <h3 class="section-title">Content Generation with Style Profile</h3>
-          <form id="generate-form" class="stack-form">
-            <label for="gen-profile">Style Profile</label>
-            <select id="gen-profile" name="profileId">
-              <option value="">-- No Profile (Base Model) --</option>
-            </select>
+      <section class="gen-layout">
+        <form id="generate-form" class="gen-form-minimal">
+          <div class="gen-grid-row">
+            <div class="gen-field">
+              <label for="gen-profile">Style Profile</label>
+              <select id="gen-profile" name="profileId">
+                <option value="">-- No Profile (Base Model) --</option>
+              </select>
+            </div>
+            <div class="gen-field">
+              <label for="gen-type">Content Type</label>
+              <select id="gen-type" name="contentType">
+                <option value="article">Article</option>
+                <option value="email">Email</option>
+                <option value="story">Story</option>
+                <option value="essay">Essay</option>
+                <option value="letter">Letter</option>
+                <option value="review">Review</option>
+                <option value="blog">Blog</option>
+                <option value="social">Social</option>
+                <option value="academic">Academic</option>
+                <option value="creative">Creative</option>
+              </select>
+            </div>
+          </div>
 
-            <label for="gen-type">Content Type</label>
-            <select id="gen-type" name="contentType">
-              <option value="article">Article</option>
-              <option value="email">Email</option>
-              <option value="story">Story</option>
-              <option value="essay">Essay</option>
-              <option value="letter">Letter</option>
-              <option value="review">Review</option>
-              <option value="blog">Blog</option>
-              <option value="social">Social</option>
-              <option value="academic">Academic</option>
-              <option value="creative">Creative</option>
-            </select>
+          <div class="gen-grid-row">
+            <div class="gen-field">
+              <label for="gen-tone">Desired Tone</label>
+              <select id="gen-tone" name="tone">
+                <option value="neutral">Neutral</option>
+                <option value="formal">Formal</option>
+                <option value="casual">Casual</option>
+                <option value="professional">Professional</option>
+                <option value="creative">Creative</option>
+                <option value="persuasive">Persuasive</option>
+              </select>
+            </div>
+            <div class="gen-field">
+              <label for="gen-length">Word Count</label>
+              <input id="gen-length" name="length" type="number" value="300" />
+            </div>
+          </div>
 
+          <div class="gen-field gen-field-full">
             <label for="gen-topic">Topic / Subject</label>
             <textarea id="gen-topic" name="topic" rows="3" required placeholder="e.g. about my pet dog remmy"></textarea>
-
-            <label for="gen-length">Target Length in words</label>
-            <input id="gen-length" name="length" type="number" value="300" />
-
-            <label for="gen-tone">Desired Tone</label>
-            <select id="gen-tone" name="tone">
-              <option value="neutral">Neutral</option>
-              <option value="formal">Formal</option>
-              <option value="casual">Casual</option>
-              <option value="professional">Professional</option>
-              <option value="creative">Creative</option>
-              <option value="persuasive">Persuasive</option>
-            </select>
-
-            <label for="gen-context">Additional Context (Optional)</label>
-            <textarea id="gen-context" name="context" rows="2" placeholder="Any specific instructions..."></textarea>
-
-            <button type="submit" class="btn btn-dark" style="margin-top: 10px;">Generate Content</button>
-          </form>
-
-          <div style="margin-top: 30px;">
-            <label style="font-weight: 600; font-size: 0.95rem; margin-bottom: 8px; display: block;">Generated Output</label>
-            <div id="gen-stream" class="gen-output-box" style="min-height: 200px; background: #fafafa; border: 1px solid #ddd; border-radius: 6px; padding: 16px; white-space: pre-wrap; color: #111318; opacity: 1;"><span class="muted" style="color: #666;">Your generated content will appear here...</span></div>
           </div>
-        </article>
+
+          <div class="gen-field gen-field-full">
+            <label for="gen-context">Additional Context (Optional)</label>
+            <textarea id="gen-context" name="context" rows="3" placeholder="Any specific instructions..."></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-dark gen-submit">Generate Content</button>
+        </form>
+
+        <div class="gen-output-wrap">
+          <label class="gen-output-label">Generated Output</label>
+          <div id="gen-stream" class="gen-output-box gen-output-minimal"><span class="muted">Your generated content will appear here...</span></div>
+        </div>
       </section>
     </section>
   `;
@@ -137,10 +147,6 @@ export async function mountGeneratePage(root) {
   });
 
 }
-
-
-
-
 
 
 
