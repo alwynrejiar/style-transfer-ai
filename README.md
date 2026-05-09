@@ -93,6 +93,32 @@ All responses follow:
 
 `app/` is plain JavaScript and is served directly by FastAPI. It does not require a frontend build step.
 
+### Recent UI updates (`app/`)
+
+- Generate and Transfer page now uses an open layout (no outer form card), aligned with Analyze page content width.
+- Generate page form structure is standardized:
+  - Top two-row, two-column layout:
+    - `Style Profile | Content Type`
+    - `Desired Tone | Word Count`
+  - `Topic / Subject`, `Additional Context`, `Generate Content`, and `Generated Output` remain full width.
+- Generate page inputs/textareas now use consistent, more visible outlines in light mode; dark mode styling remains unchanged.
+- Generate textareas (`Topic / Subject`, `Additional Context`) are fixed-height and non-resizable.
+- Analyze and Compare pages had background panel/card wrappers removed behind primary form sections for a cleaner open layout.
+- Compare page refinements:
+  - Larger radio controls for mode selection visibility.
+  - Mode label renamed from `New Text Data` to `Text Box`.
+  - Textareas are fixed-height and non-resizable.
+  - Extra spacing added before the empty-state message.
+- Page subtitles/descriptions were removed from:
+  - Analyze
+  - Generate
+  - Compare
+  - Student Analogy
+  - Profiles
+  - Settings
+- Student Analogy page title updated from `Student Analogy (v2)` to `Student Analogy`.
+- Additional heading-to-form vertical spacing was added for Analyze, Generate, and Compare pages.
+
 ### Optional Vite app (`webapp/`)
 
 There is also a separate React + TypeScript + Vite workspace in `webapp/`.
