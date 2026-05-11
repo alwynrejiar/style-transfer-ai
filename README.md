@@ -93,6 +93,12 @@ All responses follow:
 
 `app/` is plain JavaScript and is served directly by FastAPI. It does not require a frontend build step.
 
+### Local model tunnel + deployable frontend
+
+Use `deploy/zrok/expose-ollama-zrok.sh` or `deploy/zrok/expose-ollama-zrok.ps1` to expose a host machine's local Ollama API through an authenticated zrok tunnel. The optional Vite frontend in `webapp/` is now an Ollama Tunnel Console that can be deployed as static files and configured at runtime with the zrok URL and generated API key.
+
+See `docs/LOCAL_MODEL_TUNNEL.md` for the full runbook.
+
 ### Recent UI updates (`app/`)
 
 - Generate and Transfer page now uses an open layout (no outer form card), aligned with Analyze page content width.
@@ -130,7 +136,7 @@ npm run dev
 npm run build
 ```
 
-This is separate from the FastAPI-served `app/` experience.
+This is separate from the FastAPI-served `app/` experience and is intended for direct calls to an authenticated Ollama/zrok endpoint.
 
 ## Legacy CLI
 
