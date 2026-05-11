@@ -6,6 +6,7 @@ load_dotenv()
 
 import asyncio
 import json
+import os
 from typing import Any, AsyncGenerator, Dict, Optional, Union
 
 from fastapi import Depends, FastAPI, Header
@@ -460,28 +461,29 @@ async def api_generate(body: GenerateRequest, auth: AuthContext = Depends(bearer
         return failure("Please provide a topic or prompt.")
 
     options = body.options or {}
-    model_key = _normalize_model_key(str(body.model or options.get("model") or "gemma3:1b"))
-    try:
-        provider = _resolve_provider(body.provider, model_key)
-    except ValueError as exc:
-        return failure(str(exc))
-    if model_key not in AVAILABLE_MODELS and provider == "ollama":
+    provider = str(options.get("provider") or body.provider or "").lower().strip()
+    model_raw = str(options.get("model") or body.model or "gemma3:1b").strip()
+    model_key = _normalize_model_key(model_raw)
+    api_key = str(
+        options.get("apiKey")
+        or options.get("api_key")
+        or body.gemini_api_key
+        or os.environ.get("GEMINI_API_KEY", "")
+    ).strip()
+    is_gemini = provider == "gemini" or str(model_key).lower().startswith("gemini")
+    print({
+        "provider": provider,
+        "model": model_key,
+        "is_gemini": is_gemini,
+        "has_api_key": bool(api_key),
+    })
+    if is_gemini and not api_key:
+        return failure("Gemini API key is missing. Please save your Gemini API key in Settings.", status_code=400)
+    if model_key not in AVAILABLE_MODELS and not is_gemini:
         return failure(
             f"Unknown model: {model_key}. Available models: {', '.join(AVAILABLE_MODELS.keys())}"
         )
-    key_error = _provider_key_error(provider, body.gemini_api_key, body.openrouter_api_key, body.openai_api_key)
-    if key_error:
-        return failure(key_error)
     model_id = _resolve_model_id(model_key)
-    use_local = provider == "ollama"
-    api_type = None if use_local else provider
-    api_client = None
-    if provider == "gemini":
-        api_client = (body.gemini_api_key or "").strip()
-    elif provider == "openrouter":
-        api_client = (body.openrouter_api_key or "").strip()
-    elif provider == "openai":
-        api_client = (body.openai_api_key or "").strip()
 
     length_value = options.get("length", body.length if body.length is not None else 500)
     if isinstance(length_value, str):
@@ -504,10 +506,10 @@ async def api_generate(body: GenerateRequest, auth: AuthContext = Depends(bearer
             target_length,
             tone,
             context,
-            use_local,
+            not is_gemini,
             model_id,
-            api_type,
-            api_client,
+            "gemini" if is_gemini else None,
+            api_key if is_gemini else None,
         )
 
         text = str(generated.get("generated_content") or "").strip()
@@ -515,6 +517,13 @@ async def api_generate(body: GenerateRequest, auth: AuthContext = Depends(bearer
 
         if generated.get("error"):
             yield f"Generation failed: {generated.get('error')}"
+            return
+
+        if is_gemini and not text:
+            yield (
+                "Generation failed: Gemini returned an empty response. "
+                "Try again, reduce prompt constraints, or switch Gemini model."
+            )
             return
 
         if not text:
@@ -622,27 +631,28 @@ async def api_transfer(body: TransferRequest, auth: AuthContext = Depends(bearer
         }
 
     options = body.options or {}
-    model_key = _normalize_model_key(str(body.model or options.get("model") or "gemma3:1b"))
-    try:
-        provider = _resolve_provider(body.provider, model_key)
-    except ValueError as exc:
-        return failure(str(exc))
-    if model_key not in AVAILABLE_MODELS and provider == "ollama":
+    provider = str(options.get("provider") or body.provider or "").lower().strip()
+    model_raw = str(options.get("model") or body.model or "gemma3:1b").strip()
+    model_key = _normalize_model_key(model_raw)
+    api_key = str(
+        options.get("apiKey")
+        or options.get("api_key")
+        or body.gemini_api_key
+        or os.environ.get("GEMINI_API_KEY", "")
+    ).strip()
+    is_gemini = provider == "gemini" or str(model_key).lower().startswith("gemini")
+    print({
+        "provider": provider,
+        "model": model_key,
+        "is_gemini": is_gemini,
+        "has_api_key": bool(api_key),
+    })
+    if is_gemini and not api_key:
+        return failure("Gemini API key is missing. Please save your Gemini API key in Settings.", status_code=400)
+    if model_key not in AVAILABLE_MODELS and not is_gemini:
         return failure(
             f"Unknown model: {model_key}. Available models: {', '.join(AVAILABLE_MODELS.keys())}"
         )
-    key_error = _provider_key_error(provider, body.gemini_api_key, body.openrouter_api_key, body.openai_api_key)
-    if key_error:
-        return failure(key_error)
-    use_local = provider == "ollama"
-    api_type = None if use_local else provider
-    api_client = None
-    if provider == "gemini":
-        api_client = (body.gemini_api_key or "").strip()
-    elif provider == "openrouter":
-        api_client = (body.openrouter_api_key or "").strip()
-    elif provider == "openai":
-        api_client = (body.openai_api_key or "").strip()
 
     styler = StyleTransfer()
     result = await run_in_threadpool(
@@ -652,10 +662,10 @@ async def api_transfer(body: TransferRequest, auth: AuthContext = Depends(bearer
         options.get("transferType", "direct_transfer"),
         float(options.get("intensity", 1.0)),
         options.get("preserveElements", []),
-        use_local,
+        not is_gemini,
         _resolve_model_id(model_key),
-        api_type,
-        api_client,
+        "gemini" if is_gemini else None,
+        api_key if is_gemini else None,
     )
 
     if result.get("error"):

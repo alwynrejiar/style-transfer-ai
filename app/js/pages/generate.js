@@ -200,10 +200,13 @@ export async function mountGeneratePage(root) {
       model: ai.model,
       provider: ai.provider,
       options: {
+        provider: ai.provider,
+        model: ai.model,
+        apiKey: ai.provider === "gemini" ? ai.gemini_api_key : null,
         contentType: String(data.get("contentType") || "article"),
         tone: String(data.get("tone") || "neutral"),
+        length: parseInt(data.get("length") || "300", 10),
         context: String(data.get("context") || "").trim(),
-        model: ai.model,
       }
     };
 
