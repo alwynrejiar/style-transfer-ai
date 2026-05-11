@@ -1,5 +1,11 @@
 import { getToken, showAuthModal, signOutSession } from "./auth.js?v=20260504-logo-v2";
 
+const DEFAULT_AI_MODEL_STORAGE_KEY = "default_ai_model";
+const GEMINI_API_KEY_STORAGE_KEY = "gemini_api_key";
+const OPENROUTER_API_KEY_STORAGE_KEY = "openrouter_api_key";
+const OPENAI_API_KEY_STORAGE_KEY = "openai_api_key";
+const SETTINGS_STORAGE_KEY = "stylomex.settings.v1";
+
 function authHeaders(extra = {}) {
   const token = getToken();
   const headers = { ...extra };
@@ -26,6 +32,76 @@ async function parseResponse(response) {
   }
 
   return payload.data;
+}
+
+function extractErrorMessage(rawText, fallbackMessage) {
+  if (!rawText) return fallbackMessage;
+  try {
+    const payload = JSON.parse(rawText);
+    if (payload && typeof payload === "object") {
+      return payload.error || payload.message || fallbackMessage;
+    }
+  } catch {
+    // Keep raw text fallback.
+  }
+  return rawText;
+}
+
+function detectProviderFromModel(model) {
+  const normalized = String(model || "").trim().toLowerCase();
+  if (normalized.startsWith("gemini")) return "gemini";
+  if (
+    normalized.startsWith("anthropic/") ||
+    normalized.startsWith("deepseek/") ||
+    normalized.startsWith("meta-llama/") ||
+    normalized.includes("claude")
+  ) return "openrouter";
+  if (normalized.startsWith("gpt-")) return "openai";
+  return "ollama";
+}
+
+function readSavedDefaultModel() {
+  const direct = String(localStorage.getItem(DEFAULT_AI_MODEL_STORAGE_KEY) || "").trim();
+  if (direct) return direct;
+
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return "";
+    const parsed = JSON.parse(raw);
+    return String(parsed?.defaultModel || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function normalizeModelValue(model) {
+  let raw = String(model || "").trim();
+  if (!raw) return "";
+
+  // Accept previously saved label-like values such as "Gemini: gemini-2.0-flash".
+  if (raw.includes(":") && raw.includes(" ")) {
+    const maybeModel = raw.split(":", 2)[1]?.trim();
+    if (maybeModel) raw = maybeModel;
+  }
+
+  if (raw === "openrouter/claude") return "anthropic/claude-3.5-sonnet";
+  return raw;
+}
+
+export function getAIConfig() {
+  const model = normalizeModelValue(readSavedDefaultModel() || "gemini-1.5-flash");
+  const provider = detectProviderFromModel(model);
+  const geminiApiKey = String(localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || "").trim();
+  const openrouterApiKey = String(localStorage.getItem(OPENROUTER_API_KEY_STORAGE_KEY) || "").trim();
+  const openaiApiKey = String(localStorage.getItem(OPENAI_API_KEY_STORAGE_KEY) || "").trim();
+
+  return {
+    model,
+    provider,
+    gemini_api_key: provider === "gemini" ? geminiApiKey : null,
+    openrouter_api_key: provider === "openrouter" ? openrouterApiKey : null,
+    openai_api_key: provider === "openai" ? openaiApiKey : null,
+  };
 }
 
 export async function apiGet(path) {
@@ -66,7 +142,7 @@ export async function streamAnalyze(payload, handlers) {
 
   if (!response.ok || !response.body) {
     const text = await response.text();
-    throw new Error(text || "Unable to analyze text");
+    throw new Error(extractErrorMessage(text, "Unable to analyze text"));
   }
 
   const reader = response.body.getReader();
@@ -130,20 +206,32 @@ export async function streamGenerate(payload, handlers) {
 
   if (!response.ok || !response.body) {
     const text = await response.text();
-    throw new Error(text || "Unable to generate content");
+    throw new Error(extractErrorMessage(text, "Unable to generate content"));
   }
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
+  let generatedText = "";
 
   while (true) {
     const { value, done } = await reader.read();
-    if (done) break;
+    if (done) {
+      const tail = decoder.decode();
+      if (tail) {
+        generatedText += tail;
+        handlers?.onToken?.(tail);
+      }
+      break;
+    }
     const chunk = decoder.decode(value, { stream: true });
-    if (chunk) handlers?.onToken?.(chunk);
+    if (chunk) {
+      generatedText += chunk;
+      handlers?.onToken?.(chunk);
+    }
   }
 
   handlers?.onDone?.();
+  return generatedText;
 }
 
 export async function ensureHealthy() {

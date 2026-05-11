@@ -1,4 +1,4 @@
-import { apiGet, apiPost, streamGenerate } from "../api.js?v=20260324-google-auth-v14";
+import { apiGet, getAIConfig, streamGenerate } from "../api.js?v=20260511-generate-output-v1";
 import { mountLoader } from "../components/loader.js";
 
 function formatProfileDate(ds) {
@@ -12,6 +12,10 @@ function getProfileDisplayName(profile) {
   const label = profile?.analysis_name || profile?.name || "";
   if (label && String(label).trim()) return String(label).trim();
   return `Profile ${profile?.id || ""}`.trim();
+}
+
+function isDeepSeekModel(model) {
+  return String(model || "").trim().toLowerCase().startsWith("deepseek/");
 }
 
 export async function mountGeneratePage(root) {
@@ -65,6 +69,23 @@ export async function mountGeneratePage(root) {
             </div>
           </div>
 
+          <div class="gen-field">
+            <label for="gen-model">Model (from Settings)</label>
+            <select id="gen-model" name="model" disabled>
+              <option value="gemma3:1b">Local: gemma3:1b</option>
+              <option value="gemini-1.5-flash">Gemini: gemini-1.5-flash</option>
+              <option value="gemini-2.0-flash">Gemini: gemini-2.0-flash</option>
+              <option value="anthropic/claude-3.5-sonnet">OpenRouter: anthropic/claude-3.5-sonnet</option>
+              <option value="meta-llama/llama-3.3-70b-instruct:free">OpenRouter: meta-llama/llama-3.3-70b-instruct:free</option>
+              <option value="deepseek/deepseek-r1:free">OpenRouter: deepseek/deepseek-r1:free</option>
+              <option value="gpt-4o-mini">OpenAI: gpt-4o-mini</option>
+              <option value="gpt-4o">OpenAI: gpt-4o</option>
+              <option value="gpt-5.1">OpenAI: gpt-5.1</option>
+            </select>
+          </div>
+
+          <p id="generate-provider-help" class="muted">Model is controlled by Settings.</p>
+
           <div class="gen-field gen-field-full">
             <label for="gen-topic">Topic / Subject</label>
             <textarea id="gen-topic" name="topic" rows="3" required placeholder="e.g. about my pet dog remmy"></textarea>
@@ -81,6 +102,7 @@ export async function mountGeneratePage(root) {
         <div class="gen-output-wrap">
           <label class="gen-output-label">Generated Output</label>
           <div id="gen-stream" class="gen-output-box gen-output-minimal"><span class="muted">Your generated content will appear here...</span></div>
+          <div id="gen-status" class="gen-status muted" aria-live="polite"></div>
         </div>
       </section>
     </section>
@@ -88,7 +110,10 @@ export async function mountGeneratePage(root) {
 
   const genForm = root.querySelector("#generate-form");
   const streamBox = root.querySelector("#gen-stream");
+  const statusBox = root.querySelector("#gen-status");
   const profileSelect = root.querySelector("#gen-profile");
+  const modelSelect = root.querySelector("#gen-model");
+  const providerHelp = root.querySelector("#generate-provider-help");
 
   if (streamBox) {
     streamBox.style.color = "#111318";
@@ -99,7 +124,7 @@ export async function mountGeneratePage(root) {
   try {
     const res = await apiGet("/api/profiles");
     const profiles = Array.isArray(res) ? res : (res.data || []);
-    
+
     profiles.forEach(p => {
       const opt = document.createElement("option");
       opt.value = p.id;
@@ -110,49 +135,110 @@ export async function mountGeneratePage(root) {
     console.error("Failed to load profiles:", err);
   }
 
+  function updateProviderHelp() {
+    const ai = getAIConfig();
+    if (modelSelect) {
+      modelSelect.value = ai.model;
+    }
+    if (ai.provider === "gemini") {
+      providerHelp.textContent = ai.gemini_api_key
+        ? "Gemini key found in local browser storage."
+        : "Please add your Gemini API key in Settings.";
+      return;
+    }
+
+    if (ai.provider === "openrouter") {
+      providerHelp.textContent = ai.openrouter_api_key
+        ? "OpenRouter key found in local browser storage."
+        : (isDeepSeekModel(ai.model)
+          ? "OpenRouter API key required for DeepSeek."
+          : "Please add your OpenRouter API key in Settings.");
+      return;
+    }
+
+    if (ai.provider === "openai") {
+      providerHelp.textContent = ai.openai_api_key
+        ? "OpenAI key found in local browser storage."
+        : "Please add your OpenAI API key in Settings.";
+      return;
+    }
+
+    providerHelp.textContent = "Using local Ollama model from Settings.";
+  }
+
+  updateProviderHelp();
+
   genForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
-    streamBox.innerHTML = "";
+    streamBox.textContent = "";
+    if (statusBox) statusBox.textContent = "";
 
     const data = new FormData(genForm);
+    const ai = getAIConfig();
+
+    if (ai.provider === "gemini" && !ai.gemini_api_key) {
+      streamBox.textContent = "Please add your Gemini API key in Settings.";
+      return;
+    }
+
+    if (ai.provider === "openrouter" && !ai.openrouter_api_key) {
+      streamBox.textContent = isDeepSeekModel(ai.model)
+        ? "OpenRouter API key required for DeepSeek."
+        : "Please add your OpenRouter API key in Settings.";
+      return;
+    }
+
+    if (ai.provider === "openai" && !ai.openai_api_key) {
+      streamBox.textContent = "Please add your OpenAI API key in Settings.";
+      return;
+    }
+
     const payload = {
       topic: String(data.get("topic") || "").trim(),
       profileId: String(data.get("profileId") || "").trim() || null,
       length: parseInt(data.get("length") || "300", 10),
+      model: ai.model,
+      provider: ai.provider,
       options: {
         contentType: String(data.get("contentType") || "article"),
         tone: String(data.get("tone") || "neutral"),
-        context: String(data.get("context") || "").trim()
+        context: String(data.get("context") || "").trim(),
+        model: ai.model,
       }
     };
 
+    if (ai.provider === "gemini") {
+      payload.gemini_api_key = ai.gemini_api_key;
+    } else if (ai.provider === "openrouter") {
+      payload.openrouter_api_key = ai.openrouter_api_key;
+    } else if (ai.provider === "openai") {
+      payload.openai_api_key = ai.openai_api_key;
+    }
+
     mountLoader(streamBox, "Generating content...");
+    if (statusBox) statusBox.textContent = "Generating...";
 
     try {
-      streamBox.textContent = "";
+      let generatedText = "";
       await streamGenerate(payload, {
         onToken: (token) => {
-          streamBox.textContent += token;
+          generatedText += token;
+          streamBox.textContent = generatedText;
         },
       });
-      const done = document.createElement("div");
-      done.style.marginTop = "12px";
-      done.style.color = "#128a45";
-      done.style.fontWeight = "600";
-      done.textContent = "Generation complete";
-      streamBox.appendChild(done);
+
+      if (!generatedText.trim()) {
+        streamBox.textContent = "No content was generated.";
+      }
+      if (statusBox) {
+        statusBox.textContent = generatedText.trim().startsWith("Generation failed:")
+          ? ""
+          : "Generation complete";
+      }
     } catch (error) {
-      streamBox.innerHTML = `<div class='toast err'>${error.message || 'Generation failed'}</div>`;
+      streamBox.textContent = error.message || "Generation failed";
+      if (statusBox) statusBox.textContent = "";
     }
   });
 
 }
-
-
-
-
-
-
-
-
-

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Configuration settings for Style Transfer AI.
 Contains all constants, API endpoints, and model configurations.
 """
@@ -14,19 +14,21 @@ AUTHOR = "Style Transfer AI Team"
 
 # API Configuration
 OLLAMA_BASE_URL = "http://localhost:11434"
-REMOTE_OLLAMA_DEFAULT_URL = "https://myollamaapi2000.share.zrok.io"
-OPENAI_API_KEY = ""  # Unused – reserved for future cloud providers
+REMOTE_OLLAMA_DEFAULT_URL = os.environ.get("REMOTE_OLLAMA_DEFAULT_URL", "")
+
+OPENAI_API_KEY = ""  # Unused – API keys are provided per-request from the client
 
 # Available AI Models
 AVAILABLE_MODELS = {
-    "gemma3:1b": {
-        "description": "Gemma 3:1B (Fast, Efficient)", 
-        "type": "ollama"
-    },
-    "remote-ollama": {
-        "description": "Remote Ollama (via tunnel — select model after connecting)",
-        "type": "ollama"
-    }
+    "gemma3:1b": {"provider": "ollama", "label": "Gemma 3 1B Local"},
+    "gemini-1.5-flash": {"provider": "gemini", "label": "Gemini 1.5 Flash"},
+    "gemini-2.0-flash": {"provider": "gemini", "label": "Gemini 2.0 Flash"},
+    "anthropic/claude-3.5-sonnet": {"provider": "openrouter", "label": "Claude 3.5 Sonnet via OpenRouter"},
+    "meta-llama/llama-3.3-70b-instruct:free": {"provider": "openrouter", "label": "Llama 3.3 70B Instruct (Free)"},
+    "deepseek/deepseek-r1:free": {"provider": "openrouter", "label": "DeepSeek R1 (Free)"},
+    "gpt-4o-mini": {"provider": "openai", "label": "OpenAI GPT-4o mini"},
+    "gpt-4o": {"provider": "openai", "label": "OpenAI GPT-4o"},
+    "gpt-5.1": {"provider": "openai", "label": "OpenAI GPT-5.1"},
 }
 
 # Processing Modes

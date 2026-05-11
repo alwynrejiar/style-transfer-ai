@@ -1,37 +1,100 @@
 import { isAuthenticated, showAuthModal, getSession } from "../auth.js?v=20260504-logo-v2";
-import { signOutSession } from "../api.js?v=20260324-google-auth-v14";
 import { showProfileModal } from "./profileModal.js?v=20260324-google-auth-v14";
 
 const links = [
-  { hash: "#/analyze", label: "Analyze" },
-  { hash: "#/generate", label: "Generate" },
-  { hash: "#/compare", label: "Compare" },
-  { hash: "#/student-analogy", label: "Student Analogy" },
-  { hash: "#/profiles", label: "Profiles" },
-  { hash: "#/settings", label: "Settings" },
+  { hash: "#/analyze", label: "Analyze", icon: "analyze" },
+  { hash: "#/generate", label: "Generate", icon: "generate" },
+  { hash: "#/compare", label: "Compare", icon: "compare" },
+  { hash: "#/student-analogy", label: "Student Analogy", icon: "analogy" },
+  { hash: "#/profiles", label: "Saved Profiles", icon: "profiles" },
 ];
 
 const THEME_KEY = "stylomex.theme";
 const THEME_DARK = "dark";
 const THEME_LIGHT = "light";
+let currentTheme = null;
+const BRAND_LOGO_LIGHT = "assets/logo.png";
+const BRAND_LOGO_DARK = "assets/logo-orange-transparent.png";
+const ANALYZE_ICON_LIGHT = "assets/analyze black.png";
+const ANALYZE_ICON_DARK = "assets/analyze dark.png";
+const GENERATE_ICON_LIGHT = "assets/generation black.png";
+const GENERATE_ICON_DARK = "assets/generation orange.png";
+const COMPARE_ICON_LIGHT = "assets/comparing black.png";
+const COMPARE_ICON_DARK = "assets/comparing orange.png";
+const ANALOGY_ICON_LIGHT = "assets/graduated black.png";
+const ANALOGY_ICON_DARK = "assets/graduated orange.png";
+const PROFILES_ICON_LIGHT = "assets/download black.png";
+const PROFILES_ICON_DARK = "assets/download orange.png";
 
-function getStoredTheme() {
+export function getStoredTheme() {
   const value = localStorage.getItem(THEME_KEY);
   return value === THEME_LIGHT ? THEME_LIGHT : THEME_DARK;
 }
 
-function applyTheme(theme, nav) {
-  const isDark = theme === THEME_DARK;
+export function applyTheme(theme) {
+  const nextTheme = theme === THEME_LIGHT ? THEME_LIGHT : THEME_DARK;
+  if (currentTheme === nextTheme) return;
+
+  const root = document.documentElement;
+  root.classList.add("theme-switching");
+
+  currentTheme = nextTheme;
+  const isDark = nextTheme === THEME_DARK;
   document.body.classList.toggle("dark", isDark);
   document.body.classList.toggle("light", !isDark);
-  localStorage.setItem(THEME_KEY, isDark ? THEME_DARK : THEME_LIGHT);
+  localStorage.setItem(THEME_KEY, nextTheme);
+  document.body.dispatchEvent(new CustomEvent("theme:change", { detail: { theme: nextTheme } }));
 
-  if (nav) {
-    const toggleBtn = nav.querySelector("#theme-toggle");
-    if (toggleBtn) {
-      toggleBtn.textContent = isDark ? "Light mode" : "Dark mode";
-    }
-  }
+  requestAnimationFrame(() => {
+    root.classList.remove("theme-switching");
+  });
+}
+
+function navIcon(type) {
+  const base = `viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sidebar-item-icon"`;
+  if (type === "analyze") return `
+    <span class="sidebar-item-icon sidebar-item-logo analyze-icon-wrap" aria-hidden="true">
+      <img class="analyze-icon analyze-icon-light" src="${ANALYZE_ICON_LIGHT}" alt="" />
+      <img class="analyze-icon analyze-icon-dark" src="${ANALYZE_ICON_DARK}" alt="" />
+    </span>
+  `;
+  if (type === "generate") return `
+    <span class="sidebar-item-icon sidebar-item-logo generate-icon-wrap" aria-hidden="true">
+      <img class="generate-icon generate-icon-light" src="${GENERATE_ICON_LIGHT}" alt="" />
+      <img class="generate-icon generate-icon-dark" src="${GENERATE_ICON_DARK}" alt="" />
+    </span>
+  `;
+  if (type === "compare") return `
+    <span class="sidebar-item-icon sidebar-item-logo compare-icon-wrap" aria-hidden="true">
+      <img class="compare-icon compare-icon-light" src="${COMPARE_ICON_LIGHT}" alt="" />
+      <img class="compare-icon compare-icon-dark" src="${COMPARE_ICON_DARK}" alt="" />
+    </span>
+  `;
+  if (type === "analogy") return `
+    <span class="sidebar-item-icon sidebar-item-logo analogy-icon-wrap" aria-hidden="true">
+      <img class="analogy-icon analogy-icon-light" src="${ANALOGY_ICON_LIGHT}" alt="" />
+      <img class="analogy-icon analogy-icon-dark" src="${ANALOGY_ICON_DARK}" alt="" />
+    </span>
+  `;
+  if (type === "profiles") return `
+    <span class="sidebar-item-icon sidebar-item-logo profiles-icon-wrap" aria-hidden="true">
+      <img class="profiles-icon profiles-icon-light" src="${PROFILES_ICON_LIGHT}" alt="" />
+      <img class="profiles-icon profiles-icon-dark" src="${PROFILES_ICON_DARK}" alt="" />
+    </span>
+  `;
+  if (type === "settings") return `<svg ${base}><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 0 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.2a1.7 1.7 0 0 0 1 1.5h.1a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1z"></path></svg>`;
+  return `<svg ${base}><circle cx="12" cy="12" r="9"></circle></svg>`;
+}
+
+function contactIcon() {
+  return `<svg viewBox="0 0 24 24" fill="none" class="sidebar-item-icon" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>`;
+}
+
+function setSidebarLogo(nav) {
+  const logo = nav?.querySelector(".sidebar-logo-mark");
+  if (!logo) return;
+  const dark = document.body.classList.contains("dark");
+  logo.src = dark ? BRAND_LOGO_DARK : BRAND_LOGO_LIGHT;
 }
 
 function getInitials(email) {
@@ -51,11 +114,6 @@ function updateActive(nav) {
   });
 
   const isAuth = isAuthenticated();
-
-  const authBtn = nav.querySelector("#auth-btn");
-  if (authBtn) {
-    authBtn.textContent = isAuth ? "Sign out" : "Sign in";
-  }
 
   const profileCardContainer = nav.querySelector("#sidebar-profile-card");
   if (profileCardContainer) {
@@ -103,25 +161,24 @@ export function renderNavbar(mountNode) {
   mountNode.innerHTML = `
     <aside class="app-sidebar" aria-label="Primary Sidebar">
       <a class="sidebar-logo" href="/docs/index.html">
-        <img class="sidebar-logo-mark" src="assets/logo.png" alt="Stylomex logo" width="38" height="38" />
-        <span class="logo-text">Stylomex.AI</span>
+        <img class="sidebar-logo-mark" src="${BRAND_LOGO_LIGHT}" alt="Stylomex logo" />
+        <span class="logo-text sidebar-label">Stylomex.AI</span>
       </a>
 
       <div class="sidebar-nav" role="navigation" aria-label="Feature Navigation">
-        ${links.map((l) => `<a class="sidebar-link" data-hash="${l.hash}" href="${l.hash}">${l.label}</a>`).join("")}
+        ${links.map((l) => `<a class="sidebar-link sidebar-item" data-hash="${l.hash}" href="${l.hash}">${navIcon(l.icon)}<span class="sidebar-label">${l.label}</span></a>`).join("")}
       </div>
 
-      <div class="sidebar-bottom-actions" style="margin-top: auto; display: flex; flex-direction: column; gap: 12px; width: 100%;">
-        <button id="theme-toggle" class="settings-btn theme-toggle-btn" type="button">Light mode</button>
-        <a id="nav-contact" href="#/contact" class="sidebar-link" data-hash="#/contact" style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; border: 1px solid var(--border-color, rgba(128,128,128,0.2)); border-radius: 12px; font-weight: 600;">
-          <svg viewBox="0 0 24 24" fill="none" class="nav-icon" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-          </svg>
-          <span>Contact</span>
+      <div class="sidebar-bottom-actions">
+        <a href="#/settings" class="sidebar-link sidebar-item sidebar-bottom-link" data-hash="#/settings">
+          ${navIcon("settings")}
+          <span class="sidebar-label">Settings</span>
         </a>
-        <button id="auth-btn" class="settings-btn settings-btn-primary" type="button" style="width: 100%; border-radius: 12px; padding: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s;">Sign in</button>
-        
-        <div id="sidebar-profile-card" class="animated-profile-card" role="button" tabindex="0" style="margin-top: 0;" title="Click to view identity card">
+        <a id="nav-contact" href="#/contact" class="sidebar-link sidebar-item sidebar-bottom-link" data-hash="#/contact">
+          ${contactIcon()}
+          <span class="sidebar-label">Contact</span>
+        </a>
+        <div id="sidebar-profile-card" class="animated-profile-card" role="button" tabindex="0" title="Click to view identity card">
           <div class="profile-card-base">
             <div class="profile-header">
               <div class="profile-avatar profile-base-initials" style="transition: none;">G</div>
@@ -152,23 +209,20 @@ export function renderNavbar(mountNode) {
   `;
 
   const nav = mountNode.querySelector(".app-sidebar");
-  const authBtn = mountNode.querySelector("#auth-btn");
   const profileCard = mountNode.querySelector("#sidebar-profile-card");
-  const themeToggle = mountNode.querySelector("#theme-toggle");
 
-  applyTheme(getStoredTheme(), nav);
+  applyTheme(getStoredTheme());
+  setSidebarLogo(nav);
+  document.body.addEventListener("theme:change", () => setSidebarLogo(nav));
 
-  themeToggle?.addEventListener("click", () => {
-    const nextTheme = document.body.classList.contains("dark") ? THEME_LIGHT : THEME_DARK;
-    applyTheme(nextTheme, nav);
-  });
-
-  authBtn?.addEventListener("click", async () => {
-    if (!isAuthenticated()) {
-      showAuthModal();
-      return;
-    }
-    await signOutSession();
+  const setExpanded = (expand) => {
+    document.body.classList.toggle("sidebar-expanded", expand);
+  };
+  nav.addEventListener("mouseenter", () => setExpanded(true));
+  nav.addEventListener("mouseleave", () => setExpanded(false));
+  nav.addEventListener("focusin", () => setExpanded(true));
+  nav.addEventListener("focusout", (event) => {
+    if (!nav.contains(event.relatedTarget)) setExpanded(false);
   });
 
   profileCard?.addEventListener("click", () => {
@@ -183,11 +237,3 @@ export function renderNavbar(mountNode) {
   window.addEventListener("auth:change", () => updateActive(nav));
   updateActive(nav);
 }
-
-
-
-
-
-
-
-

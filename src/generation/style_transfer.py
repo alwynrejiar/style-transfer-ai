@@ -404,6 +404,32 @@ Transform the content now:
                 from ..models.remote_ollama_client import analyze_with_remote_ollama
                 result = analyze_with_remote_ollama(prompt, processing_mode="fast")
                 return result
+            elif api_type == "gemini":
+                from ..models.gemini_client import generate_gemini_response
+                result = generate_gemini_response(
+                    prompt=prompt,
+                    api_key=str(api_client or ""),
+                    model=(model_name or "gemini-1.5-flash"),
+                )
+                return result
+            elif api_type == "openrouter":
+                from ..models.openrouter_client import generate_openrouter_response
+                result = generate_openrouter_response(
+                    prompt=prompt,
+                    api_key=str(api_client or ""),
+                    model=(model_name or "anthropic/claude-3.5-sonnet"),
+                )
+                return result
+            elif api_type == "openai":
+                from ..models.openai_client import generate_openai_response
+                result = generate_openai_response(
+                    prompt=prompt,
+                    api_key=str(api_client or ""),
+                    model=(model_name or "gpt-4o-mini"),
+                    temperature=0.7,
+                    max_tokens=3000,
+                )
+                return result
             elif model_name == "gemini":
                 from ..models.gemini_client import analyze_with_gemini
                 result = analyze_with_gemini(prompt, processing_mode="fast")

@@ -1,4 +1,4 @@
-import { apiGet, apiPost, streamAnalyze } from "../api.js?v=20260324-google-auth-v14";
+import { apiGet, apiPost, getAIConfig, streamAnalyze } from "../api.js?v=20260511-gemini-rest-v1";
 import { mountLoader } from "../components/loader.js";
 
 function itemOptions(items) {
@@ -24,6 +24,10 @@ function compareBars(result) {
       </div>
     </div>
   `;
+}
+
+function isDeepSeekModel(model) {
+  return String(model || "").trim().toLowerCase().startsWith("deepseek/");
 }
 
 export async function mountComparePage(root) {
@@ -98,19 +102,45 @@ export async function mountComparePage(root) {
     }
 
     if (!textVal.trim()) throw new Error(`Please enter text data for ${nameFallback}`);
-    
+
     let finalProfile = null;
-    await streamAnalyze({ text: textVal.trim(), author_name: nameFallback }, {
-        onPass: () => {},
-        onProgress: (evt) => {
-           resultEl.innerHTML = `<div><div class="loader"></div><p class="muted">Analyzing ${nameFallback}... ${Number(evt.elapsed_seconds||0)}s elapsed.</p></div>`;
-        },
-        onResult: (res) => { finalProfile = res; },
-        onError: (err) => { throw new Error(err); }
+    const ai = getAIConfig();
+    if (ai.provider === "gemini" && !ai.gemini_api_key) {
+      throw new Error("Please add your Gemini API key in Settings.");
+    }
+    if (ai.provider === "openrouter" && !ai.openrouter_api_key) {
+      throw new Error(isDeepSeekModel(ai.model)
+        ? "OpenRouter API key required for DeepSeek."
+        : "Please add your OpenRouter API key in Settings.");
+    }
+    if (ai.provider === "openai" && !ai.openai_api_key) {
+      throw new Error("Please add your OpenAI API key in Settings.");
+    }
+    const analysisPayload = {
+      text: textVal.trim(),
+      author_name: nameFallback,
+      model: ai.model,
+      provider: ai.provider,
+    };
+    if (ai.provider === "gemini") {
+      analysisPayload.gemini_api_key = ai.gemini_api_key;
+    } else if (ai.provider === "openrouter") {
+      analysisPayload.openrouter_api_key = ai.openrouter_api_key;
+    } else if (ai.provider === "openai") {
+      analysisPayload.openai_api_key = ai.openai_api_key;
+    }
+
+    await streamAnalyze(analysisPayload, {
+      onPass: () => { },
+      onProgress: (evt) => {
+        resultEl.innerHTML = `<div><div class="loader"></div><p class="muted">Analyzing ${nameFallback}... ${Number(evt.elapsed_seconds || 0)}s elapsed.</p></div>`;
+      },
+      onResult: (res) => { finalProfile = res; },
+      onError: (err) => { throw new Error(err); }
     });
 
-    if(!finalProfile) throw new Error(`Failed to generate profile for ${nameFallback}`);
-    
+    if (!finalProfile) throw new Error(`Failed to generate profile for ${nameFallback}`);
+
     // Return NO ID, just raw data so it doesn't save to DB!
     return { id: null, data: finalProfile };
   }
@@ -120,10 +150,10 @@ export async function mountComparePage(root) {
 
     const modeA = root.querySelector('input[name="mode_a"]:checked').value;
     const modeB = root.querySelector('input[name="mode_b"]:checked').value;
-    
+
     const valA = selectA.value;
     const valB = selectB.value;
-    
+
     const txtA = textA.value;
     const txtB = textB.value;
 
@@ -141,12 +171,22 @@ export async function mountComparePage(root) {
 
       mountLoader(resultEl, "Comparing profiles...");
 
+      const ai = getAIConfig();
       const payload = {
         profile_a_id: targetA.id,
         profile_b_id: targetB.id,
         profile_a_data: targetA.data,
-        profile_b_data: targetB.data
+        profile_b_data: targetB.data,
+        model: ai.model,
+        provider: ai.provider,
       };
+      if (ai.provider === "gemini") {
+        payload.gemini_api_key = ai.gemini_api_key;
+      } else if (ai.provider === "openrouter") {
+        payload.openrouter_api_key = ai.openrouter_api_key;
+      } else if (ai.provider === "openai") {
+        payload.openai_api_key = ai.openai_api_key;
+      }
 
       const result = await apiPost("/api/comparisons", payload);
       resultEl.innerHTML = compareBars(result);
@@ -158,7 +198,6 @@ export async function mountComparePage(root) {
     }
   });
 }
-
 
 
 

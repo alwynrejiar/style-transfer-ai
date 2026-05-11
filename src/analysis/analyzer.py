@@ -487,7 +487,25 @@ def _call_model_for_json(
     # ── Auto-resolve: if model_name is a cloud model, override use_local ──
     # This handles legacy callers that hardcode use_local=True but pass a
     # cloud model key (e.g. "gemini") as model_name.
-    _GEMINI_NAMES = {"gemini", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"}
+    _GEMINI_NAMES = {
+        "gemini",
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+        "gemini-2.0-flash",
+        "gemini-pro",
+    }
+    _OPENROUTER_NAMES = {
+        "openrouter/claude",
+        "anthropic/claude-3.5-sonnet",
+        "anthropic/claude-3.7-sonnet",
+    }
+    _OPENAI_NAMES = {
+        "gpt-4o-mini",
+        "gpt-4o",
+        "gpt-5.1",
+    }
+    def _is_openai_model(name: str | None) -> bool:
+        return bool(name) and str(name).lower().startswith("gpt-")
     if use_local and model_name in _GEMINI_NAMES:
         use_local = False
         if not api_type:
@@ -495,6 +513,20 @@ def _call_model_for_json(
         if not api_client:
             import os
             api_client = os.environ.get("GEMINI_API_KEY", "")
+    if use_local and model_name in _OPENROUTER_NAMES:
+        use_local = False
+        if not api_type:
+            api_type = "openrouter"
+        if not api_client:
+            import os
+            api_client = os.environ.get("OPENROUTER_API_KEY", "")
+    if use_local and (_is_openai_model(model_name) or model_name in _OPENAI_NAMES):
+        use_local = False
+        if not api_type:
+            api_type = "openai"
+        if not api_client:
+            import os
+            api_client = os.environ.get("OPENAI_API_KEY", "")
 
     try:
         if model_name == "remote-ollama":
@@ -519,11 +551,48 @@ def _call_model_for_json(
                 raw = analyze_with_gemini(
                     prompt,
                     api_key_or_client=api_client,
+                    model_name=model_name or "gemini-1.5-flash",
                     temperature=mode.get("temperature", 0.2),
                     max_tokens=mode.get("gemma_tokens", 3000),
                 )
             except TypeError:
                 raw = analyze_with_gemini(prompt, processing_mode=processing_mode)
+
+        elif api_type == "openrouter" or model_name in _OPENROUTER_NAMES:
+            from ..models.openrouter_client import generate_openrouter_response
+            if not api_client:
+                import os
+                api_client = os.environ.get("OPENROUTER_API_KEY", "")
+            if not api_client:
+                return {
+                    "_pass_error": "OpenRouter API key not found.",
+                    "_pass_name": pass_name,
+                }
+            openrouter_model = model_name or "anthropic/claude-3.5-sonnet"
+            if openrouter_model == "openrouter/claude":
+                openrouter_model = "anthropic/claude-3.5-sonnet"
+            raw = generate_openrouter_response(prompt, str(api_client), openrouter_model)
+
+        elif api_type == "openai" or _is_openai_model(model_name) or model_name in _OPENAI_NAMES:
+            from ..models.openai_client import analyze_with_openai
+            from ..config.settings import PROCESSING_MODES
+            if not api_client:
+                import os
+                api_client = os.environ.get("OPENAI_API_KEY", "")
+            if not api_client:
+                return {
+                    "_pass_error": "OpenAI API key not found.",
+                    "_pass_name": pass_name,
+                }
+            mode = PROCESSING_MODES.get(processing_mode, PROCESSING_MODES["fast"])
+            raw = analyze_with_openai(
+                prompt,
+                api_key=str(api_client),
+                model_name=model_name or "gpt-4o-mini",
+                temperature=mode.get("temperature", 0.2),
+                max_tokens=mode.get("gemma_tokens", 3000),
+                processing_mode=processing_mode,
+            )
 
         elif use_local:
             raw = analyze_with_ollama(prompt, model_name, processing_mode=processing_mode)
@@ -535,8 +604,8 @@ def _call_model_for_json(
         else:
             return {
                 "_pass_error": (
-                    f"Unknown API type: {api_type!r}. Pass api_type='gemini' or 'openai' "
-                    "with api_client, or set use_local=True for Ollama."
+                    f"Unknown API type: {api_type!r}. Pass api_type='gemini' "
+                    "or 'openrouter' or 'openai' with api_client, or set use_local=True for Ollama."
                 ),
                 "_pass_name": pass_name,
             }

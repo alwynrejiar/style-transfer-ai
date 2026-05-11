@@ -395,7 +395,36 @@ class AnalogyInjector:
                 raise ValueError("model_name is required for local Ollama inference.")
             return analyze_with_ollama(prompt, model_name, "enhanced")
 
-        return "Error: No remote API configured for analogy generation."
+        if api_type == "gemini":
+            from ..models.gemini_client import generate_gemini_response
+            return generate_gemini_response(
+                prompt=prompt,
+                api_key=str(api_client or ""),
+                model=(model_name or "gemini-1.5-flash"),
+            )
+
+        if api_type == "openrouter":
+            from ..models.openrouter_client import generate_openrouter_response
+            remote_model = model_name or "anthropic/claude-3.5-sonnet"
+            if remote_model == "openrouter/claude":
+                remote_model = "anthropic/claude-3.5-sonnet"
+            return generate_openrouter_response(
+                prompt=prompt,
+                api_key=str(api_client or ""),
+                model=remote_model,
+            )
+
+        if api_type == "openai":
+            from ..models.openai_client import generate_openai_response
+            return generate_openai_response(
+                prompt=prompt,
+                api_key=str(api_client or ""),
+                model=(model_name or "gpt-4o-mini"),
+                temperature=0.7,
+                max_tokens=3000,
+            )
+
+        raise ValueError("No remote API configured for analogy generation.")
 
     # ------------------------------------------------------------------
     # Legacy response parsing & injection helpers (inject_mode)

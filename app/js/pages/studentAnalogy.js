@@ -1,4 +1,4 @@
-import { apiPost } from "../api.js?v=20260324-google-auth-v14";
+import { apiPost, getAIConfig } from "../api.js?v=20260511-gemini-rest-v1";
 import { mountLoader } from "../components/loader.js";
 
 const ANALOGY_DOMAINS = [
@@ -10,6 +10,10 @@ const ANALOGY_DOMAINS = [
   { id: "tech", label: "Tech" },
   { id: "general_simplification", label: "General Simplification" }
 ];
+
+function isDeepSeekModel(model) {
+  return String(model || "").trim().toLowerCase().startsWith("deepseek/");
+}
 
 function stripConceptMapSection(text) {
   if (!text) return "";
@@ -99,10 +103,35 @@ export async function mountStudentAnalogyPage(root) {
     mountLoader(streamBox, "Preparing content (this may take a moment)...");
 
     try {
-      const data = await apiPost("/api/analogy", {
+      const ai = getAIConfig();
+      if (ai.provider === "gemini" && !ai.gemini_api_key) {
+        throw new Error("Please add your Gemini API key in Settings.");
+      }
+      if (ai.provider === "openrouter" && !ai.openrouter_api_key) {
+        throw new Error(isDeepSeekModel(ai.model)
+          ? "OpenRouter API key required for DeepSeek."
+          : "Please add your OpenRouter API key in Settings.");
+      }
+      if (ai.provider === "openai" && !ai.openai_api_key) {
+        throw new Error("Please add your OpenAI API key in Settings.");
+      }
+      const analogyPayload = {
         text: topic,
-        domain: "general_simplification"
-      });
+        domain: "general_simplification",
+        model: ai.model,
+        model_name: ai.model,
+        provider: ai.provider,
+        use_local: ai.provider === "ollama",
+      };
+      if (ai.provider === "gemini") {
+        analogyPayload.gemini_api_key = ai.gemini_api_key;
+      } else if (ai.provider === "openrouter") {
+        analogyPayload.openrouter_api_key = ai.openrouter_api_key;
+      } else if (ai.provider === "openai") {
+        analogyPayload.openai_api_key = ai.openai_api_key;
+      }
+
+      const data = await apiPost("/api/analogy", analogyPayload);
 
       if (!data) {
         throw new Error("Failed to prepare content.");
@@ -112,7 +141,7 @@ export async function mountStudentAnalogyPage(root) {
       if (!expandedText) {
         throw new Error("No content returned from backend.");
       }
-      
+
       streamBox.textContent = expandedText;
       const ready = document.createElement("div");
       ready.style.marginTop = "10px";
@@ -121,7 +150,7 @@ export async function mountStudentAnalogyPage(root) {
       ready.textContent = "Content ready";
       streamBox.appendChild(ready);
       streamBox.scrollTop = 0;
-      
+
       step2Section.style.display = "block";
     } catch (error) {
       streamBox.innerHTML = `<div class="toast err">${error.message || "Error occurred"}</div>`;
@@ -135,19 +164,44 @@ export async function mountStudentAnalogyPage(root) {
     const domain = String(data.get("domain") || "general_simplification");
 
     if (!expandedText.trim()) {
-       finalOutputCard.style.display = "block";
-       outputEl.innerHTML = "<div class=\"toast err\">Please expand content in Step 1 first.</div>";
-       return;
+      finalOutputCard.style.display = "block";
+      outputEl.innerHTML = "<div class=\"toast err\">Please expand content in Step 1 first.</div>";
+      return;
     }
 
     finalOutputCard.style.display = "block";
     mountLoader(outputEl, "Generating analogy transformation...");
 
     try {
-      const data = await apiPost("/api/analogy", {
+      const ai = getAIConfig();
+      if (ai.provider === "gemini" && !ai.gemini_api_key) {
+        throw new Error("Please add your Gemini API key in Settings.");
+      }
+      if (ai.provider === "openrouter" && !ai.openrouter_api_key) {
+        throw new Error(isDeepSeekModel(ai.model)
+          ? "OpenRouter API key required for DeepSeek."
+          : "Please add your OpenRouter API key in Settings.");
+      }
+      if (ai.provider === "openai" && !ai.openai_api_key) {
+        throw new Error("Please add your OpenAI API key in Settings.");
+      }
+      const analogyPayload = {
         text: expandedText.trim(),
-        domain: domain
-      });
+        domain: domain,
+        model: ai.model,
+        model_name: ai.model,
+        provider: ai.provider,
+        use_local: ai.provider === "ollama",
+      };
+      if (ai.provider === "gemini") {
+        analogyPayload.gemini_api_key = ai.gemini_api_key;
+      } else if (ai.provider === "openrouter") {
+        analogyPayload.openrouter_api_key = ai.openrouter_api_key;
+      } else if (ai.provider === "openai") {
+        analogyPayload.openai_api_key = ai.openai_api_key;
+      }
+
+      const data = await apiPost("/api/analogy", analogyPayload);
 
       if (!data) {
         throw new Error("Failed to generate analogy.");
@@ -161,9 +215,6 @@ export async function mountStudentAnalogyPage(root) {
     }
   });
 }
-
-
-
 
 
 

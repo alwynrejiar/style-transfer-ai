@@ -27,9 +27,13 @@ class ContentGenerator:
     def __init__(self):
         self.templates = GenerationTemplates()
         self.supported_content_types = [
-            'email', 'article', 'story', 'essay', 'letter', 
+            'email', 'article', 'story', 'essay', 'letter',
             'review', 'blog_post', 'social_media', 'academic', 'creative'
         ]
+        self.content_type_aliases = {
+            'blog': 'blog_post',
+            'social': 'social_media',
+        }
     
     def generate_content(
         self, 
@@ -56,13 +60,16 @@ class ContentGenerator:
             additional_context (str): Additional context or requirements
             use_local (bool): Use local Ollama vs API models
             model_name (str): Specific model for generation
-            api_type (str): 'openai' or 'gemini' for cloud APIs
+            api_type (str): 'gemini' or 'openrouter' for cloud APIs
             api_client: Pre-initialized API client
             
         Returns:
             Dict: Generated content with metadata and quality metrics
         """
         try:
+            content_type = str(content_type or "article").strip().lower()
+            content_type = self.content_type_aliases.get(content_type, content_type)
+
             # Validate inputs
             if content_type not in self.supported_content_types:
                 raise ValueError(f"Unsupported content type: {content_type}")
@@ -81,13 +88,14 @@ class ContentGenerator:
             )
             
             # Generate content using specified model
-            generated_text = self._execute_generation(
+            raw_generated_text = self._execute_generation(
                 prompt=generation_prompt,
                 use_local=use_local,
                 model_name=model_name,
                 api_type=api_type,
                 api_client=api_client
             )
+            generated_text = self._coerce_generated_text(raw_generated_text)
             
             # Analyze and validate generated content
             quality_metrics = self._analyze_generated_content(generated_text, style_profile)
@@ -115,7 +123,7 @@ class ContentGenerator:
         except Exception as e:
             return {
                 'error': str(e),
-                'generated_content': None,
+                'generated_content': "",
                 'timestamp': datetime.now().strftime(TIMESTAMP_FORMAT)
             }
     
@@ -260,6 +268,32 @@ Generate the content now, ensuring it authentically reflects the specified writi
                 from ..models.remote_ollama_client import analyze_with_remote_ollama
                 result = analyze_with_remote_ollama(prompt, processing_mode="fast")
                 return result
+            elif api_type == "gemini":
+                from ..models.gemini_client import generate_gemini_response
+                result = generate_gemini_response(
+                    prompt=prompt,
+                    api_key=str(api_client or ""),
+                    model=(model_name or "gemini-1.5-flash"),
+                )
+                return result
+            elif api_type == "openrouter":
+                from ..models.openrouter_client import generate_openrouter_response
+                result = generate_openrouter_response(
+                    prompt=prompt,
+                    api_key=str(api_client or ""),
+                    model=(model_name or "anthropic/claude-3.5-sonnet"),
+                )
+                return result
+            elif api_type == "openai":
+                from ..models.openai_client import generate_openai_response
+                result = generate_openai_response(
+                    prompt=prompt,
+                    api_key=str(api_client or ""),
+                    model=(model_name or "gpt-4o-mini"),
+                    temperature=0.7,
+                    max_tokens=3000,
+                )
+                return result
             elif model_name == "gemini":
                 from ..models.gemini_client import analyze_with_gemini
                 result = analyze_with_gemini(prompt, processing_mode="fast")
@@ -272,6 +306,43 @@ Generate the content now, ensuring it authentically reflects the specified writi
                 
         except Exception as e:
             raise RuntimeError(f"Content generation failed: {str(e)}")
+
+    def _coerce_generated_text(self, response: Union[str, Dict]) -> str:
+        """Extract generated text from provider-specific response shapes."""
+        if isinstance(response, str):
+            return response.strip()
+
+        if not isinstance(response, dict):
+            return str(response or "").strip()
+
+        for key in ("generated_content", "text", "content", "output", "response"):
+            value = response.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+
+        choices = response.get("choices")
+        if isinstance(choices, list) and choices:
+            first = choices[0] if isinstance(choices[0], dict) else {}
+            message = first.get("message") if isinstance(first.get("message"), dict) else {}
+            content = message.get("content")
+            if isinstance(content, str) and content.strip():
+                return content.strip()
+
+        candidates = response.get("candidates")
+        if isinstance(candidates, list) and candidates:
+            first = candidates[0] if isinstance(candidates[0], dict) else {}
+            content = first.get("content") if isinstance(first.get("content"), dict) else {}
+            parts = content.get("parts")
+            if isinstance(parts, list):
+                text = "".join(
+                    str(part.get("text", ""))
+                    for part in parts
+                    if isinstance(part, dict) and part.get("text")
+                ).strip()
+                if text:
+                    return text
+
+        return ""
     
     def _analyze_generated_content(self, generated_text: str, original_style_profile: Dict) -> Dict:
         """Analyze the quality and characteristics of generated content."""

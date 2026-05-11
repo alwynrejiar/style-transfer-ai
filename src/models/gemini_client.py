@@ -3,7 +3,9 @@ Gemini API client for Style Transfer AI.
 Version-safe: works with google-generativeai 0.3.x – 0.8.x+.
 """
 
-from typing import Tuple, Optional
+from typing import Any, Tuple, Optional
+
+import requests
 
 # Version-safe generation config import
 try:
@@ -18,6 +20,10 @@ except ImportError:
 # Cache a known-good model name once discovered, so subsequent calls avoid retries.
 _RESOLVED_MODEL_NAME: Optional[str] = None
 
+GEMINI_GENERATE_CONTENT_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+)
+
 
 def _candidate_model_names(requested_model: str) -> list[str]:
     """Return an ordered list of model IDs to try for broad API compatibility."""
@@ -26,6 +32,8 @@ def _candidate_model_names(requested_model: str) -> list[str]:
     def add(name: str):
         if name and name not in ordered:
             ordered.append(name)
+
+    requested_model = _normalize_gemini_model_name(requested_model)
 
     # Prefer the requested model first.
     add(requested_model)
@@ -37,19 +45,121 @@ def _candidate_model_names(requested_model: str) -> list[str]:
         add("gemini-1.5-pro-latest")
 
     add("gemini-2.0-flash")
+    add("gemini-2.5-flash")
     add("gemini-2.0-flash-exp")
     add("gemini-1.5-flash-latest")
     add("gemini-1.5-pro-latest")
+    add("gemini-pro")
 
     return ordered
+
+
+def _normalize_gemini_model_name(model_name: str | None) -> str:
+    model = str(model_name or "").strip()
+    if model.startswith("models/"):
+        model = model.split("/", 1)[1]
+    if model == "gemini":
+        return "gemini-1.5-flash"
+    return model or "gemini-1.5-flash"
 
 
 def _is_model_not_found_error(err: Exception) -> bool:
     msg = str(err).lower()
     return (
-        "404" in msg
-        and ("not found" in msg or "not supported" in msg)
-        and "model" in msg
+        "model" in msg
+        and (
+            "unknown model" in msg
+            or "model not found" in msg
+            or "not found" in msg
+            or "not supported" in msg
+            or "404" in msg
+        )
+    )
+
+
+def _extract_gemini_text(payload: dict[str, Any]) -> str:
+    candidates = payload.get("candidates")
+    if not isinstance(candidates, list) or not candidates:
+        raise RuntimeError("Gemini returned an empty response.")
+
+    content = candidates[0].get("content") if isinstance(candidates[0], dict) else {}
+    parts = content.get("parts") if isinstance(content, dict) else []
+    if not isinstance(parts, list):
+        raise RuntimeError("Gemini returned an empty response.")
+
+    text = "".join(
+        str(part.get("text", ""))
+        for part in parts
+        if isinstance(part, dict) and part.get("text")
+    ).strip()
+    if not text:
+        raise RuntimeError("Gemini returned an empty text response.")
+    return text
+
+
+def _extract_gemini_error(payload: dict[str, Any]) -> str:
+    error = payload.get("error")
+    if isinstance(error, dict):
+        return str(error.get("message") or error.get("status") or "Gemini API error")
+    if isinstance(error, str) and error.strip():
+        return error.strip()
+    return "Gemini API error"
+
+
+def _generate_with_gemini_rest(
+    prompt: str,
+    api_key: str,
+    model_name: str,
+    temperature: float,
+    max_tokens: int,
+) -> str:
+    global _RESOLVED_MODEL_NAME
+
+    last_error = ""
+    for candidate in _candidate_model_names(_RESOLVED_MODEL_NAME or model_name):
+        body = {
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens,
+            },
+        }
+
+        try:
+            response = requests.post(
+                GEMINI_GENERATE_CONTENT_URL.format(model=candidate),
+                params={"key": api_key.strip()},
+                headers={"Content-Type": "application/json"},
+                json=body,
+                timeout=120,
+            )
+        except requests.exceptions.Timeout as exc:
+            raise RuntimeError("Gemini request timed out.") from exc
+        except requests.exceptions.RequestException as exc:
+            raise RuntimeError(f"Gemini network error: {exc}") from exc
+
+        payload: dict[str, Any] = {}
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = {}
+
+        if response.status_code in (401, 403):
+            raise RuntimeError("Invalid Gemini API key.")
+
+        if response.status_code >= 400:
+            last_error = _extract_gemini_error(payload)
+            if _is_model_not_found_error(Exception(last_error)):
+                continue
+            raise RuntimeError(f"Gemini API call failed ({response.status_code}): {last_error}")
+
+        text = _extract_gemini_text(payload)
+        _RESOLVED_MODEL_NAME = candidate
+        return text
+
+    raise RuntimeError(
+        "Gemini API call failed: no compatible Gemini model worked. "
+        f"Last error: {last_error or 'unknown model'}"
     )
 
 
@@ -120,8 +230,6 @@ def analyze_with_gemini(
         max_tokens:         Maximum output tokens.
         processing_mode:    Accepted for compatibility, not used directly.
     """
-    import google.generativeai as genai
-
     # Resolve api_key_or_client → model object
     if api_key_or_client is None:
         import os
@@ -132,10 +240,17 @@ def analyze_with_gemini(
             raise RuntimeError(
                 "Gemini API key is empty. Set GEMINI_API_KEY env var or pass the key explicitly."
             )
-        genai.configure(api_key=api_key_or_client)
-        model = None
+        return _generate_with_gemini_rest(
+            prompt=prompt,
+            api_key=api_key_or_client,
+            model_name=model_name,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
     else:
         model = api_key_or_client
+
+    import google.generativeai as genai
 
     # Build generation config safely
     gen_cfg = None
@@ -163,7 +278,18 @@ def analyze_with_gemini(
         except Exception as e:
             raise RuntimeError(f"Gemini API call failed: {e}")
 
-    # String API key path: probe candidate model IDs for compatibility.
+    # String API key path: use REST directly to avoid SDK-local model registry
+    # mismatches like "Unknown model: gemini-1.5-flash".
+    if isinstance(api_key_or_client, str):
+        return _generate_with_gemini_rest(
+            prompt=prompt,
+            api_key=api_key_or_client,
+            model_name=model_name,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+
+    # SDK fallback for pre-built client objects.
     global _RESOLVED_MODEL_NAME
     candidates = _candidate_model_names(_RESOLVED_MODEL_NAME or model_name)
     last_error: Optional[Exception] = None
@@ -190,6 +316,23 @@ def analyze_with_gemini(
     raise RuntimeError(
         "Gemini API call failed: no compatible model ID worked. "
         f"Last error: {last_error}"
+    )
+
+
+def generate_gemini_response(prompt: str, api_key: str, model: str = "gemini-1.5-flash") -> str:
+    """
+    Generate a Gemini response using an explicit API key supplied at runtime.
+    """
+    if not api_key or not api_key.strip():
+        raise RuntimeError("Gemini API key is missing.")
+    if not model or not model.strip():
+        raise RuntimeError("Gemini model is required.")
+
+    return analyze_with_gemini(
+        prompt=prompt,
+        api_key_or_client=api_key.strip(),
+        model_name=model.strip(),
+        processing_mode="fast",
     )
 
 

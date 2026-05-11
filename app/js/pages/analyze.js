@@ -1,4 +1,4 @@
-import { apiPost, streamAnalyze } from "../api.js?v=20260324-google-auth-v14";
+import { apiPost, getAIConfig, streamAnalyze } from "../api.js?v=20260511-gemini-rest-v1";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -12,6 +12,10 @@ function escapeHtml(value) {
 function formatNumber(value, digits = 1) {
   const n = Number(value);
   return Number.isFinite(n) ? n.toFixed(digits) : "-";
+}
+
+function isDeepSeekModel(model) {
+  return String(model || "").trim().toLowerCase().startsWith("deepseek/");
 }
 
 function normalizeResult(input) {
@@ -127,6 +131,20 @@ export async function mountAnalyzePage(root) {
         
         <label for="analyze-text">Text to Analyze</label>
         <textarea id="analyze-text" name="text" rows="10" placeholder="Paste at least a few paragraphs for stronger results" required></textarea>
+
+        <label for="analyze-model">Model (from Settings)</label>
+        <select id="analyze-model" name="model" disabled>
+          <option value="gemma3:1b">Local: gemma3:1b</option>
+          <option value="gemini-1.5-flash">Gemini: gemini-1.5-flash</option>
+          <option value="gemini-2.0-flash">Gemini: gemini-2.0-flash</option>
+          <option value="anthropic/claude-3.5-sonnet">OpenRouter: anthropic/claude-3.5-sonnet</option>
+          <option value="meta-llama/llama-3.3-70b-instruct:free">OpenRouter: meta-llama/llama-3.3-70b-instruct:free</option>
+          <option value="deepseek/deepseek-r1:free">OpenRouter: deepseek/deepseek-r1:free</option>
+          <option value="gpt-4o-mini">OpenAI: gpt-4o-mini</option>
+          <option value="gpt-4o">OpenAI: gpt-4o</option>
+          <option value="gpt-5.1">OpenAI: gpt-5.1</option>
+        </select>
+        <p id="analyze-provider-help" class="muted">Model is controlled by Settings.</p>
         
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
           <button type="submit" class="btn btn-dark btn-glow">Analyze</button>
@@ -149,6 +167,8 @@ export async function mountAnalyzePage(root) {
   const statusEl = root.querySelector("#analyze-status");
   const feedbackEl = root.querySelector("#analyze-feedback");
   const streamBox = root.querySelector("#analyze-stream");
+  const analyzeModelSelect = root.querySelector("#analyze-model");
+  const providerHelp = root.querySelector("#analyze-provider-help");
 
   if (streamBox) {
     streamBox.style.color = "#111318";
@@ -157,6 +177,39 @@ export async function mountAnalyzePage(root) {
   }
 
   let lastResult = null;
+
+  function updateProviderHelp() {
+    const ai = getAIConfig();
+    if (analyzeModelSelect) {
+      analyzeModelSelect.value = ai.model;
+    }
+    if (ai.provider === "gemini") {
+      providerHelp.textContent = ai.gemini_api_key
+        ? "Gemini key found in local browser storage."
+        : "Please add your Gemini API key in Settings.";
+      return;
+    }
+
+    if (ai.provider === "openrouter") {
+      providerHelp.textContent = ai.openrouter_api_key
+        ? "OpenRouter key found in local browser storage."
+        : (isDeepSeekModel(ai.model)
+          ? "OpenRouter API key required for DeepSeek."
+          : "Please add your OpenRouter API key in Settings.");
+      return;
+    }
+
+    if (ai.provider === "openai") {
+      providerHelp.textContent = ai.openai_api_key
+        ? "OpenAI key found in local browser storage."
+        : "Please add your OpenAI API key in Settings.";
+      return;
+    }
+
+    providerHelp.textContent = "Using local Ollama model from Settings.";
+  }
+
+  updateProviderHelp();
 
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -168,12 +221,50 @@ export async function mountAnalyzePage(root) {
     const data = new FormData(form);
     const text = String(data.get("text") || "").trim();
     const name = String(data.get("name") || "").trim();
+    const ai = getAIConfig();
+
+    if (ai.provider === "gemini" && !ai.gemini_api_key) {
+      statusEl.textContent = "Missing API key.";
+      feedbackEl.innerHTML = "<div class='toast err'>Please add your Gemini API key in Settings.</div>";
+      return;
+    }
+
+    if (ai.provider === "openrouter" && !ai.openrouter_api_key) {
+      statusEl.textContent = "Missing API key.";
+      feedbackEl.innerHTML = `<div class='toast err'>${isDeepSeekModel(ai.model) ? "OpenRouter API key required for DeepSeek." : "Please add your OpenRouter API key in Settings."}</div>`;
+      return;
+    }
+
+    if (ai.provider === "openai" && !ai.openai_api_key) {
+      statusEl.textContent = "Missing API key.";
+      feedbackEl.innerHTML = "<div class='toast err'>Please add your OpenAI API key in Settings.</div>";
+      return;
+    }
+
+    const payload = {
+      text,
+      model: ai.model,
+      mode: "fast",
+      author_name: name || "Anonymous_User",
+      provider: ai.provider,
+    };
+
+    if (ai.provider === "gemini") {
+      payload.gemini_api_key = ai.gemini_api_key;
+    } else if (ai.provider === "openrouter") {
+      payload.openrouter_api_key = ai.openrouter_api_key;
+    } else if (ai.provider === "openai") {
+      payload.openai_api_key = ai.openai_api_key;
+    }
+
+    console.log("Analyze model selected:", payload.model);
+    console.log("Analyze provider selected:", payload.provider);
 
     try {
       await streamAnalyze(
-        { text, author_name: name || "Anonymous_User" },
+        payload,
         {
-          onPass: () => {},
+          onPass: () => { },
           onProgress: (evt) => {
             const elapsed = Number(evt?.elapsed_seconds || 0);
             statusEl.textContent = `Analysis in progress (${elapsed}s elapsed).`;

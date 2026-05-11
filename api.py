@@ -68,6 +68,90 @@ def failure(message: str, status_code: int = 400) -> JSONResponse:
     return JSONResponse(status_code=status_code, content={"success": False, "error": message})
 
 
+VALID_PROVIDERS = {"ollama", "gemini", "openrouter", "openai"}
+CONTENT_TYPE_ALIASES = {
+    "blog": "blog_post",
+    "social": "social_media",
+}
+
+
+def _detect_provider_from_model(model: str) -> str:
+    normalized = str(model or "").strip().lower()
+    if normalized.startswith("gemini"):
+        return "gemini"
+    if (
+        normalized.startswith("anthropic/")
+        or normalized.startswith("deepseek/")
+        or normalized.startswith("meta-llama/")
+        or "claude" in normalized
+    ):
+        return "openrouter"
+    if normalized.startswith("gpt-"):
+        return "openai"
+    return "ollama"
+
+
+def _resolve_provider(provider: Optional[str], model_key: str) -> str:
+    requested = (provider or "").strip().lower()
+    model_info = AVAILABLE_MODELS.get(model_key, {})
+    model_provider = str(model_info.get("provider") or model_info.get("type") or "").strip().lower()
+    inferred = _detect_provider_from_model(model_key)
+    resolved = requested or model_provider or inferred
+    print(f"DEBUG resolve: provider={provider}, model_key={model_key}, requested={requested}, model_provider={model_provider}, inferred={inferred}, resolved={resolved}")
+    if resolved not in VALID_PROVIDERS:
+        raise ValueError(f"Unknown provider: {resolved}")
+    if model_provider and resolved != model_provider:
+        raise ValueError(
+            f"Model '{model_key}' belongs to provider '{model_provider}', got provider '{resolved}'."
+        )
+    return resolved
+
+
+def _resolve_model_id(model_key: str) -> str:
+    model_info = AVAILABLE_MODELS.get(model_key, {})
+    return str(model_info.get("model_id") or model_key)
+
+
+def _normalize_content_type(content_type: Any) -> str:
+    normalized = str(content_type or "article").strip().lower()
+    return CONTENT_TYPE_ALIASES.get(normalized, normalized or "article")
+
+
+def _normalize_model_key(model: Optional[str]) -> str:
+    normalized = str(model or "").strip()
+    if not normalized:
+        return ""
+
+    # Accept legacy/formatted UI labels like "Gemini: gemini-2.0-flash".
+    if ":" in normalized and " " in normalized:
+        maybe_model = normalized.split(":", 1)[1].strip()
+        if maybe_model:
+            normalized = maybe_model
+
+    # Backward-compatible alias.
+    if normalized == "openrouter/claude":
+        normalized = "anthropic/claude-3.5-sonnet"
+
+    # Case-insensitive canonicalization to configured keys.
+    lower_map = {key.lower(): key for key in AVAILABLE_MODELS.keys()}
+    return lower_map.get(normalized.lower(), normalized)
+
+
+def _provider_key_error(
+    provider: str,
+    gemini_api_key: Optional[str],
+    openrouter_api_key: Optional[str],
+    openai_api_key: Optional[str],
+) -> Optional[str]:
+    if provider == "gemini" and not (gemini_api_key or "").strip():
+        return "Gemini API key is required when provider is 'gemini'."
+    if provider == "openrouter" and not (openrouter_api_key or "").strip():
+        return "OpenRouter API key is required when provider is 'openrouter'."
+    if provider == "openai" and not (openai_api_key or "").strip():
+        return "OpenAI API key is required for OpenAI models."
+    return None
+
+
 class AuthContext(BaseModel):
     access_token: str
     user_id: str
@@ -126,6 +210,10 @@ class AnalyzeRequest(BaseModel):
     model: str = "gemma3:1b"
     mode: str = "fast"
     author_name: str = "Anonymous_User"
+    provider: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
 
 
 class GenerateRequest(BaseModel):
@@ -135,13 +223,23 @@ class GenerateRequest(BaseModel):
     profile_id: Optional[str] = None
     length: Optional[Union[int, str]] = None
     options: Dict[str, Any] = Field(default_factory=dict)
+    model: Optional[str] = None
+    provider: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
 
 
 class AnalogyRequest(BaseModel):
     text: str
     domain: str
+    model: Optional[str] = None
     model_name: Optional[str] = "gemma3:1b"
     use_local: bool = True
+    provider: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
 
 
 class TransferRequest(BaseModel):
@@ -150,6 +248,11 @@ class TransferRequest(BaseModel):
     profile_id: Optional[str] = None
     instructions: str = ""
     options: Dict[str, Any] = Field(default_factory=dict)
+    model: Optional[str] = None
+    provider: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
 
 
 class SaveProfileRequest(BaseModel):
@@ -164,6 +267,13 @@ class CompareRequest(BaseModel):
     profileBId: Optional[str] = None
     profile_a_id: Optional[str] = None
     profile_b_id: Optional[str] = None
+    profile_a_data: Optional[Dict[str, Any]] = None
+    profile_b_data: Optional[Dict[str, Any]] = None
+    model: Optional[str] = None
+    provider: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
 
 
 class SaveProfileMetaRequest(BaseModel):
@@ -249,12 +359,36 @@ async def api_delete_account(body: DeleteAccountRequest, auth: AuthContext = Dep
 
 @app.post("/api/analyze")
 async def api_analyze(body: AnalyzeRequest):
-    if body.model not in AVAILABLE_MODELS:
-        return failure(f"Unknown model: {body.model}")
+    model = _normalize_model_key(body.model)
+    try:
+        provider = _resolve_provider(body.provider, model)
+    except ValueError as exc:
+        return failure(str(exc))
+    if model not in AVAILABLE_MODELS and provider == "ollama":
+        return failure(
+            f"Unknown model: {model}. Available models: {', '.join(AVAILABLE_MODELS.keys())}"
+        )
+    body.model = model
+    print("Analyze request model:", model)
+    print("Available models:", list(AVAILABLE_MODELS.keys()))
     if body.mode not in PROCESSING_MODES:
         return failure(f"Unknown mode: {body.mode}")
+    key_error = _provider_key_error(provider, body.gemini_api_key, body.openrouter_api_key, body.openai_api_key)
+    if key_error:
+        return failure(key_error)
     if len(body.text.split()) < 20:
         return failure("Please provide more input text for analysis.")
+
+    model_id = _resolve_model_id(body.model)
+    use_local = provider == "ollama"
+    api_type = None if use_local else provider
+    api_client = None
+    if provider == "gemini":
+        api_client = (body.gemini_api_key or "").strip()
+    elif provider == "openrouter":
+        api_client = (body.openrouter_api_key or "").strip()
+    elif provider == "openai":
+        api_client = (body.openai_api_key or "").strip()
 
     async def stream() -> AsyncGenerator[str, None]:
         for pass_name in PASS_ORDER:
@@ -265,10 +399,10 @@ async def api_analyze(body: AnalyzeRequest):
             None,
             analyze_style,
             body.text,
-            True,
-            body.model,
-            None,
-            None,
+            use_local,
+            model_id,
+            api_type,
+            api_client,
             body.mode,
             2,
         )
@@ -326,6 +460,29 @@ async def api_generate(body: GenerateRequest, auth: AuthContext = Depends(bearer
         return failure("Please provide a topic or prompt.")
 
     options = body.options or {}
+    model_key = _normalize_model_key(str(body.model or options.get("model") or "gemma3:1b"))
+    try:
+        provider = _resolve_provider(body.provider, model_key)
+    except ValueError as exc:
+        return failure(str(exc))
+    if model_key not in AVAILABLE_MODELS and provider == "ollama":
+        return failure(
+            f"Unknown model: {model_key}. Available models: {', '.join(AVAILABLE_MODELS.keys())}"
+        )
+    key_error = _provider_key_error(provider, body.gemini_api_key, body.openrouter_api_key, body.openai_api_key)
+    if key_error:
+        return failure(key_error)
+    model_id = _resolve_model_id(model_key)
+    use_local = provider == "ollama"
+    api_type = None if use_local else provider
+    api_client = None
+    if provider == "gemini":
+        api_client = (body.gemini_api_key or "").strip()
+    elif provider == "openrouter":
+        api_client = (body.openrouter_api_key or "").strip()
+    elif provider == "openai":
+        api_client = (body.openai_api_key or "").strip()
+
     length_value = options.get("length", body.length if body.length is not None else 500)
     if isinstance(length_value, str):
         length_map = {"short": 300, "medium": 500, "long": 900}
@@ -333,36 +490,50 @@ async def api_generate(body: GenerateRequest, auth: AuthContext = Depends(bearer
     else:
         target_length = int(length_value)
 
+    content_type = _normalize_content_type(options.get("contentType", "article"))
+    tone = options.get("tone", "neutral")
+    context = options.get("context", "")
+
     async def stream() -> AsyncGenerator[str, None]:
         generator = ContentGenerator()
         generated = await run_in_threadpool(
             generator.generate_content,
             profile,
-            options.get("contentType", "article"),
+            content_type,
             topic,
             target_length,
-            options.get("tone", "neutral"),
-            options.get("context", ""),
-            True,
-            options.get("model", "gemma3:1b"),
-            None,
-            None,
+            tone,
+            context,
+            use_local,
+            model_id,
+            api_type,
+            api_client,
         )
 
-        text = generated.get("generated_content") or ""
+        text = str(generated.get("generated_content") or "").strip()
+        print("Generated text length:", len(text))
+
+        if generated.get("error"):
+            yield f"Generation failed: {generated.get('error')}"
+            return
+
+        if not text:
+            yield "No content was generated."
+            return
+
         for token in text.split(" "):
             yield token + " "
 
         if text:
             content_data = {
                 "style_analysis_id": profile_id,
-                "content_type": options.get("contentType", "article"),
+                "content_type": content_type,
                 "topic": topic,
                 "content": text,
                 "target_length": target_length,
                 "actual_length": len(text.split()),
-                "tone": options.get("tone", "neutral"),
-                "model_used": options.get("model", "gemma3:1b"),
+                "tone": tone,
+                "model_used": model_key,
                 "quality_metrics": generated.get("quality_metrics", {}),
                 "style_adherence_score": generated.get("style_adherence_score", 0.0),
             }
@@ -373,22 +544,48 @@ async def api_generate(body: GenerateRequest, auth: AuthContext = Depends(bearer
 
 @app.post("/api/analogy")
 async def api_analogy(body: AnalogyRequest):
-    if not is_ollama_installed():
-        return failure("Model unavailable — is Ollama running?", status_code=503)
-
     if not body.text or not body.text.strip():
         return failure("Please provide input text for analogy generation.", status_code=400)
 
     if body.domain not in ANALOGY_DOMAINS:
         return failure(f"Invalid domain. Must be one of: {list(ANALOGY_DOMAINS.keys())}", status_code=400)
 
+    model_key = _normalize_model_key(str(body.model or body.model_name or "gemma3:1b"))
+    provider_input = body.provider
+    if not provider_input:
+        provider_input = "ollama" if body.use_local else _detect_provider_from_model(model_key)
+
+    try:
+        provider = _resolve_provider(provider_input, model_key)
+    except ValueError as exc:
+        return failure(str(exc))
+
+    key_error = _provider_key_error(provider, body.gemini_api_key, body.openrouter_api_key, body.openai_api_key)
+    if key_error:
+        return failure(key_error)
+
+    use_local = provider == "ollama"
+    if use_local and not is_ollama_installed():
+        return failure("Model unavailable — is Ollama running?", status_code=503)
+
+    api_type = None if use_local else provider
+    api_client = None
+    if provider == "gemini":
+        api_client = (body.gemini_api_key or "").strip()
+    elif provider == "openrouter":
+        api_client = (body.openrouter_api_key or "").strip()
+    elif provider == "openai":
+        api_client = (body.openai_api_key or "").strip()
+
     try:
         injector = AnalogyInjector(domain=body.domain)
         result = await run_in_threadpool(
             injector.augment_text,
             body.text,
-            use_local=body.use_local,
-            model_name=body.model_name
+            use_local=use_local,
+            model_name=_resolve_model_id(model_key),
+            api_type=api_type,
+            api_client=api_client,
         )
 
         expanded_text = result.get("expanded_text", "")
@@ -425,6 +622,27 @@ async def api_transfer(body: TransferRequest, auth: AuthContext = Depends(bearer
         }
 
     options = body.options or {}
+    model_key = _normalize_model_key(str(body.model or options.get("model") or "gemma3:1b"))
+    try:
+        provider = _resolve_provider(body.provider, model_key)
+    except ValueError as exc:
+        return failure(str(exc))
+    if model_key not in AVAILABLE_MODELS and provider == "ollama":
+        return failure(
+            f"Unknown model: {model_key}. Available models: {', '.join(AVAILABLE_MODELS.keys())}"
+        )
+    key_error = _provider_key_error(provider, body.gemini_api_key, body.openrouter_api_key, body.openai_api_key)
+    if key_error:
+        return failure(key_error)
+    use_local = provider == "ollama"
+    api_type = None if use_local else provider
+    api_client = None
+    if provider == "gemini":
+        api_client = (body.gemini_api_key or "").strip()
+    elif provider == "openrouter":
+        api_client = (body.openrouter_api_key or "").strip()
+    elif provider == "openai":
+        api_client = (body.openai_api_key or "").strip()
 
     styler = StyleTransfer()
     result = await run_in_threadpool(
@@ -434,10 +652,10 @@ async def api_transfer(body: TransferRequest, auth: AuthContext = Depends(bearer
         options.get("transferType", "direct_transfer"),
         float(options.get("intensity", 1.0)),
         options.get("preserveElements", []),
-        True,
-        options.get("model", "gemma3:1b"),
-        None,
-        None,
+        use_local,
+        _resolve_model_id(model_key),
+        api_type,
+        api_client,
     )
 
     if result.get("error"):
@@ -468,7 +686,7 @@ async def api_save_profile(body: SaveProfileRequest, auth: AuthContext = Depends
         payload["user_profile"]["name"] = body.name or "Anonymous_User"
 
     if "metadata" not in payload:
-        payload["metadata"] = {"processing_mode": "enhanced", "model_used": "gemma3:1b"}
+        payload["metadata"] = {"processing_mode": "enhanced", "model_used": "gemini-1.5-flash"}
 
     result = await run_in_threadpool(save_analysis, auth.access_token, auth.user_id, payload)
     if not result.get("success"):
@@ -494,18 +712,29 @@ async def api_delete_profile(profile_id: str, auth: AuthContext = Depends(bearer
 
 @app.post("/api/comparisons")
 async def api_create_comparison(body: CompareRequest, auth: AuthContext = Depends(bearer_auth)):
+    model_key = _normalize_model_key(str(body.model or "gemma3:1b"))
+    try:
+        provider = _resolve_provider(body.provider, model_key)
+    except ValueError as exc:
+        return failure(str(exc))
+    key_error = _provider_key_error(provider, body.gemini_api_key, body.openrouter_api_key, body.openai_api_key)
+    if key_error:
+        return failure(key_error)
+
     profile_a_id = body.profileAId or body.profile_a_id
     profile_b_id = body.profileBId or body.profile_b_id
-    if not profile_a_id or not profile_b_id:
-        return failure("Both profile IDs are required")
-
-    a = await run_in_threadpool(get_analysis, auth.access_token, auth.user_id, profile_a_id)
-    b = await run_in_threadpool(get_analysis, auth.access_token, auth.user_id, profile_b_id)
-    if not a.get("success") or not b.get("success"):
-        return failure("One or both profiles not found", status_code=404)
-
-    data_a = a.get("data") or {}
-    data_b = b.get("data") or {}
+    if profile_a_id and profile_b_id:
+        a = await run_in_threadpool(get_analysis, auth.access_token, auth.user_id, profile_a_id)
+        b = await run_in_threadpool(get_analysis, auth.access_token, auth.user_id, profile_b_id)
+        if not a.get("success") or not b.get("success"):
+            return failure("One or both profiles not found", status_code=404)
+        data_a = a.get("data") or {}
+        data_b = b.get("data") or {}
+    elif body.profile_a_data and body.profile_b_data:
+        data_a = body.profile_a_data
+        data_b = body.profile_b_data
+    else:
+        return failure("Provide either both profile IDs or both profile data payloads.")
 
     text_a = data_a.get("style_fingerprint_summary") or json.dumps(data_a.get("consolidated_analysis", {}))
     text_b = data_b.get("style_fingerprint_summary") or json.dumps(data_b.get("consolidated_analysis", {}))
@@ -514,21 +743,23 @@ async def api_create_comparison(body: CompareRequest, auth: AuthContext = Depend
     deep_b = extract_deep_stylometry(text_b)
     similarity = calculate_style_similarity(deep_a, deep_b)
 
-    comparison_payload = {
-        "profile_a_id": profile_a_id,
-        "profile_b_id": profile_b_id,
-        "comparison_result": similarity,
-        "similarity_score": similarity.get("combined_score", 0.0),
-    }
-    saved = await run_in_threadpool(save_comparison, auth.access_token, auth.user_id, comparison_payload)
-    if not saved.get("success"):
-        return failure(saved.get("error") or "Failed to save comparison")
+    saved = None
+    if profile_a_id and profile_b_id:
+        comparison_payload = {
+            "profile_a_id": profile_a_id,
+            "profile_b_id": profile_b_id,
+            "comparison_result": similarity,
+            "similarity_score": similarity.get("combined_score", 0.0),
+        }
+        saved = await run_in_threadpool(save_comparison, auth.access_token, auth.user_id, comparison_payload)
+        if not saved.get("success"):
+            return failure(saved.get("error") or "Failed to save comparison")
 
     return success({
         "comparison": similarity,
         "similarity_score": round(similarity.get("combined_score", 0.0) * 100, 2),
         "feature_overlap": round(similarity.get("ngram_overlap", 0.0) * 100, 2),
-        "saved": saved.get("data"),
+        "saved": saved.get("data") if saved else None,
     })
 
 
@@ -558,6 +789,17 @@ async def api_health():
         "ollama": bool(ollama_ok),
         "models": models,
         "supabase": supabase_ok,
+        "backend_build": "20260511-gemini-rest-v2",
+        "gemini_transport": "rest",
+    })
+
+
+@app.get("/api/models")
+async def api_models():
+    return success({
+        "models": AVAILABLE_MODELS,
+        "model_keys": list(AVAILABLE_MODELS.keys()),
+        "gemini_transport": "rest",
     })
 
 

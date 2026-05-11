@@ -1,4 +1,5 @@
 import { getSession } from "../auth.js?v=20260504-logo-v2";
+import { apiGet } from "../api.js?v=20260324-google-auth-v14";
 
 function getAvatarUrl(email) {
   return localStorage.getItem(`stylomex.avatar.${email}`);
@@ -14,6 +15,39 @@ export function showProfileModal() {
   const username = email.split('@')[0];
   const initials = email ? email.substring(0, 2).toUpperCase() : "G";
   const avatarUrl = getAvatarUrl(email);
+  const joinedKey = email ? `stylomex.joined.${email}` : "";
+  const joinedISO = joinedKey ? (localStorage.getItem(joinedKey) || new Date().toISOString()) : new Date().toISOString();
+  if (joinedKey && !localStorage.getItem(joinedKey)) {
+    localStorage.setItem(joinedKey, joinedISO);
+  }
+  const joinedDate = new Date(joinedISO).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+
+  const roleOptions = ["Writer", "Researcher", "Student", "Creator"];
+  const toneOptions = ["Formal", "Persuasive", "Analytical", "Creative"];
+  const roleKey = email ? `stylomex.role.${email}` : "";
+  const toneKey = email ? `stylomex.tone.${email}` : "";
+  const defaultRole = roleOptions[(username.length || 0) % roleOptions.length];
+  const defaultTone = toneOptions[(email.length || 0) % toneOptions.length];
+  let role = roleKey ? (localStorage.getItem(roleKey) || defaultRole) : defaultRole;
+  let dominantTone = toneKey ? (localStorage.getItem(toneKey) || defaultTone) : defaultTone;
+
+  const scoreFromString = (value) =>
+    (Array.from(value || "").reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % 31) + 70;
+
+  const fingerprintScore = scoreFromString(email || username);
+  let savedProfilesCount = 0;
+  apiGet("/api/profiles")
+    .then((profiles) => {
+      const items = Array.isArray(profiles) ? profiles : profiles?.data || [];
+      savedProfilesCount = items.length;
+      const countNode = document.querySelector("#profile-modal-saved-count");
+      if (countNode) countNode.textContent = String(savedProfilesCount);
+    })
+    .catch(() => {});
 
   let modal = document.getElementById("profile-modal");
   if (modal) { modal.remove(); modal = null; } /* Force recreate to prevent weird states */
@@ -48,15 +82,68 @@ export function showProfileModal() {
           </label>
         </div>
         <div class="profile-modal-info">
-          <span class="profile-modal-email-label">${email}</span>
+          <span class="profile-modal-email-label">Profile Overview</span>
           <h2 class="profile-modal-username">${username}</h2>
         </div>
       </div>
       <div class="profile-modal-body">
-        <p class="profile-modal-bio">
-          Stylomex.AI User<br/>
-          Building stylistic fingerprints and generating content through advanced AI profiling.
-        </p>
+        <section class="profile-modal-section">
+          <div class="profile-modal-row">
+            <span class="profile-modal-key">Username</span>
+            <span class="profile-modal-value">${username}</span>
+          </div>
+          <div class="profile-modal-row">
+            <span class="profile-modal-key">Email</span>
+            <span class="profile-modal-value">${email}</span>
+          </div>
+          <div class="profile-modal-row">
+            <span class="profile-modal-key">Joined Date</span>
+            <span class="profile-modal-value">${joinedDate}</span>
+          </div>
+        </section>
+
+        <section class="profile-modal-section">
+          <div class="profile-modal-row">
+            <span class="profile-modal-key">Role</span>
+            <span class="profile-modal-value" id="profile-modal-role">${role}</span>
+          </div>
+          <div class="profile-modal-row">
+            <span class="profile-modal-key">Writing Fingerprint Score</span>
+            <span class="profile-modal-value">${fingerprintScore}</span>
+          </div>
+          <div class="profile-modal-row">
+            <span class="profile-modal-key">Dominant Tone</span>
+            <span class="profile-modal-value" id="profile-modal-tone">${dominantTone}</span>
+          </div>
+        </section>
+
+        <section class="profile-modal-section">
+          <div class="profile-modal-row">
+            <span class="profile-modal-key">Number of Saved Profiles</span>
+            <span class="profile-modal-value" id="profile-modal-saved-count">${savedProfilesCount}</span>
+          </div>
+        </section>
+
+        <section class="profile-modal-section">
+          <div class="profile-modal-actions">
+            <button type="button" id="profile-edit-btn" class="profile-modal-btn">Edit Profile</button>
+            <button type="button" id="profile-save-btn" class="profile-modal-btn profile-modal-btn-primary hidden">Save</button>
+          </div>
+          <div id="profile-edit-fields" class="profile-modal-edit-grid hidden">
+            <label class="profile-modal-input-wrap" for="profile-role-select">
+              <span class="profile-modal-key">Role</span>
+              <select id="profile-role-select" class="profile-modal-select">
+                ${roleOptions.map((option) => `<option value="${option}" ${option === role ? "selected" : ""}>${option}</option>`).join("")}
+              </select>
+            </label>
+            <label class="profile-modal-input-wrap" for="profile-tone-select">
+              <span class="profile-modal-key">Dominant Tone</span>
+              <select id="profile-tone-select" class="profile-modal-select">
+                ${toneOptions.map((option) => `<option value="${option}" ${option === dominantTone ? "selected" : ""}>${option}</option>`).join("")}
+              </select>
+            </label>
+          </div>
+        </section>
       </div>
     </div>
   `;
@@ -107,9 +194,36 @@ export function showProfileModal() {
       reader.readAsDataURL(file);
     }
   });
+
+  const editBtn = modal.querySelector("#profile-edit-btn");
+  const saveBtn = modal.querySelector("#profile-save-btn");
+  const editFields = modal.querySelector("#profile-edit-fields");
+  const roleSelect = modal.querySelector("#profile-role-select");
+  const toneSelect = modal.querySelector("#profile-tone-select");
+  const roleValue = modal.querySelector("#profile-modal-role");
+  const toneValue = modal.querySelector("#profile-modal-tone");
+
+  editBtn?.addEventListener("click", () => {
+    editFields?.classList.remove("hidden");
+    saveBtn?.classList.remove("hidden");
+    editBtn.classList.add("hidden");
+  });
+
+  saveBtn?.addEventListener("click", () => {
+    role = roleSelect?.value || role;
+    dominantTone = toneSelect?.value || dominantTone;
+
+    if (roleKey) localStorage.setItem(roleKey, role);
+    if (toneKey) localStorage.setItem(toneKey, dominantTone);
+
+    if (roleValue) roleValue.textContent = role;
+    if (toneValue) toneValue.textContent = dominantTone;
+
+    editFields?.classList.add("hidden");
+    saveBtn.classList.add("hidden");
+    editBtn?.classList.remove("hidden");
+  });
 }
-
-
 
 
 
