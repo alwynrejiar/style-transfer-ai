@@ -5,14 +5,17 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import asyncio
+import base64
 import json
 import os
+import re
 from typing import Any, AsyncGenerator, Dict, Optional, Union
 
+import requests
 from fastapi import Depends, FastAPI, Header
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -31,7 +34,7 @@ from src.database.auth import (
 from src.database.db_analyses import delete_analysis, get_analysis, list_analyses, save_analysis
 from src.database.db_comparisons import list_comparisons, save_comparison
 from src.database.db_content import save_generated_content
-from src.database.db_profiles import get_user_profile, update_user_profile
+from src.database.db_user_profiles import get_user_overview_profile, update_user_overview_profile
 from src.database.supabase_client import get_supabase_client
 from src.generation import ContentGenerator, StyleTransfer
 from src.analysis.analogy_engine import AnalogyInjector, ANALOGY_DOMAINS
@@ -285,6 +288,21 @@ class UpdateProfileRequest(BaseModel):
     profile: Dict[str, Any]
 
 
+class UpdateUserOverviewRequest(BaseModel):
+    username: Optional[str] = None
+    role: Optional[str] = None
+    writing_fingerprint_score: Optional[int] = None
+    dominant_tone: Optional[str] = None
+    number_of_saved_profiles: Optional[int] = None
+    avatar_url: Optional[str] = None
+
+
+class UploadAvatarRequest(BaseModel):
+    image_base64: str
+    filename: Optional[str] = None
+    content_type: Optional[str] = None
+
+
 @app.post("/api/auth/signup")
 async def api_sign_up(body: SignUpRequest):
     result = await run_in_threadpool(sign_up, body.email, body.password, body.name)
@@ -308,6 +326,56 @@ async def api_auth_google_start(body: GoogleAuthStartRequest):
     if not result.get("success"):
         return failure(result.get("error") or "Unable to start Google auth", status_code=400)
     return success(result.get("data"))
+
+
+@app.get("/api/auth/google/callback")
+async def api_auth_google_callback():
+        """Simple HTML page that captures OAuth tokens from the provider redirect
+        (either query string or URL fragment) and forwards them into the single-
+        page app at `/app/` as a hash fragment so the client-side session logic
+        can pick them up.
+
+        This avoids fragment-loss when redirects hit the server first.
+        """
+        html = """
+        <!doctype html>
+        <html>
+            <head>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width,initial-scale=1" />
+                <title>Signing in...</title>
+            </head>
+            <body>
+                <p>Signing you in — please wait...</p>
+                <script>
+                    try {
+                        const hash = window.location.hash || '';
+                        const search = window.location.search || '';
+                        // Prefer fragment if present, otherwise use query string
+                        let fragment = '';
+                        if (hash && hash.includes('access_token=')) {
+                            fragment = hash;
+                        } else if (search && search.includes('access_token=')) {
+                            fragment = '#' + search.replace(/^\?/, '');
+                        } else if (search && search.includes('code=')) {
+                            // OAuth code flow: pass through to SPA so it can decide what to do
+                            const code = new URLSearchParams(search.replace(/^\?/, '')).get('code');
+                            window.location.replace(window.location.origin + '/app/?code=' + encodeURIComponent(code));
+                        }
+
+                        if (fragment) {
+                            // Redirect into the SPA with the token fragment so client can read it
+                            window.location.replace(window.location.origin + '/app/' + fragment);
+                        }
+                    } catch (e) {
+                        // If anything goes wrong, bounce to the app root.
+                        window.location.replace(window.location.origin + '/app/');
+                    }
+                </script>
+            </body>
+        </html>
+        """
+        return HTMLResponse(content=html)
 
 
 @app.post("/api/auth/signout")
@@ -356,6 +424,95 @@ async def api_delete_account(body: DeleteAccountRequest, auth: AuthContext = Dep
     if not result.get("success"):
         return failure(result.get("error") or "Failed to delete account")
     return success({"deleted": True})
+
+
+@app.get("/api/user-profile")
+async def api_get_user_profile_overview(auth: AuthContext = Depends(bearer_auth)):
+    result = await run_in_threadpool(get_user_overview_profile, auth.access_token, auth.user_id)
+    if not result.get("success"):
+        return failure(result.get("error") or "Failed to fetch user profile")
+    return success(result.get("data") or {})
+
+
+@app.patch("/api/user-profile")
+async def api_update_user_profile_overview(
+    body: UpdateUserOverviewRequest,
+    auth: AuthContext = Depends(bearer_auth),
+):
+    payload = body.model_dump(exclude_none=True) if hasattr(body, "model_dump") else body.dict(exclude_none=True)
+    result = await run_in_threadpool(update_user_overview_profile, auth.access_token, auth.user_id, payload)
+    if not result.get("success"):
+        return failure(result.get("error") or "Failed to update user profile")
+    return success(result.get("data") or {})
+
+
+@app.post("/api/user-profile/avatar")
+async def api_upload_user_avatar(body: UploadAvatarRequest, auth: AuthContext = Depends(bearer_auth)):
+    raw_b64 = (body.image_base64 or "").strip()
+    if not raw_b64:
+        return failure("image_base64 is required.")
+
+    inferred_content_type = (body.content_type or "").strip().lower()
+    b64_payload = raw_b64
+    if raw_b64.startswith("data:"):
+        match = re.match(r"^data:(?P<mime>[-\w.+/]+);base64,(?P<data>.+)$", raw_b64, re.DOTALL)
+        if not match:
+            return failure("Invalid data URL format for image_base64.")
+        inferred_content_type = inferred_content_type or match.group("mime").lower()
+        b64_payload = match.group("data")
+
+    mime_to_ext = {
+        "image/png": "png",
+        "image/jpeg": "jpg",
+        "image/jpg": "jpg",
+        "image/webp": "webp",
+    }
+    if inferred_content_type not in mime_to_ext:
+        return failure("Unsupported image type. Use png, jpeg, or webp.")
+
+    try:
+        image_bytes = base64.b64decode(b64_payload, validate=True)
+    except Exception:
+        return failure("Invalid base64 image payload.")
+    if not image_bytes:
+        return failure("Decoded image is empty.")
+
+    ext = mime_to_ext[inferred_content_type]
+    object_name = f"{auth.user_id}/avatar.{ext}"
+
+    supabase_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    anon_key = os.environ.get("SUPABASE_ANON_KEY", "")
+    if not supabase_url or not anon_key:
+        return failure("Supabase is not configured on the server.", status_code=500)
+
+    upload_url = f"{supabase_url}/storage/v1/object/profile-images/{object_name}"
+    headers = {
+        "Authorization": f"Bearer {auth.access_token}",
+        "apikey": anon_key,
+        "Content-Type": inferred_content_type,
+        "x-upsert": "true",
+    }
+
+    try:
+        upload_response = requests.post(upload_url, headers=headers, data=image_bytes, timeout=60)
+    except Exception as exc:
+        return failure(f"Avatar upload failed: {exc}", status_code=502)
+
+    if upload_response.status_code >= 400:
+        err = upload_response.text or f"Storage upload failed ({upload_response.status_code})."
+        return failure(err, status_code=upload_response.status_code)
+
+    public_url = f"{supabase_url}/storage/v1/object/public/profile-images/{object_name}"
+    update_result = await run_in_threadpool(
+        update_user_overview_profile,
+        auth.access_token,
+        auth.user_id,
+        {"avatar_url": public_url},
+    )
+    if not update_result.get("success"):
+        return failure(update_result.get("error") or "Avatar uploaded, but profile update failed.", status_code=500)
+
+    return success({"avatar_url": public_url, "path": object_name})
 
 
 @app.post("/api/analyze")

@@ -1,6 +1,5 @@
 """
 Style analysis CRUD operations for Supabase.
-Replaces the local JSON file storage in src/storage/local_storage.py.
 """
 
 from .supabase_client import get_authenticated_client

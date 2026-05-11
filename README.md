@@ -1,25 +1,22 @@
 # Stylomex / Style Transfer AI
 
-Style Transfer AI is a stylometry and style-transfer project with a FastAPI backend, a static browser app, and legacy CLI tooling.
+Style Transfer AI is a stylometry and style-transfer project with a FastAPI backend and a static browser app.
 
 Current primary runtime:
 - FastAPI server in `api.py`
 - Static app in `app/` served at `/app`
 - Static docs site in `docs/` served at `/docs`
 
-Legacy tooling still exists:
-- CLI entry via `python scripts/run.py`
-- Package console script `style-transfer-ai`
-
 ## Current Architecture
 
 - API server: `api.py`
 - Core Python package: `src/`
-- Browser app (vanilla JS): `app/`
+- Browser app: `app/`
 - Docs/marketing static site: `docs/`
-- Optional Vite React frontend workspace: `webapp/`
+- Deployment helpers: `deploy/`
+- Dependency manifest: `install/requirements.txt`
 
-## Run Locally (Primary)
+## Run Locally
 
 ### 1. Create and activate a Python environment
 
@@ -35,7 +32,7 @@ pip install -r install/requirements.txt
 pip install fastapi uvicorn python-dotenv supabase
 ```
 
-### 3. Optional local model setup (Ollama)
+### 3. Optional local model setup
 
 ```bash
 ollama serve
@@ -48,6 +45,12 @@ ollama pull gemma3:1b
 python -m uvicorn api:app --host 127.0.0.1 --port 8000
 ```
 
+Alternative:
+
+```bash
+python run.py
+```
+
 Open:
 - App: http://127.0.0.1:8000/app
 - Docs page: http://127.0.0.1:8000/docs/index.html
@@ -55,13 +58,14 @@ Open:
 
 ## API Surface
 
-All responses follow:
+All standard JSON responses follow:
 
 ```json
 { "success": true, "data": {}, "error": null }
 ```
 
 ### Auth
+
 - `POST /api/auth/signup`
 - `POST /api/auth/signin`
 - `POST /api/auth/google/start`
@@ -71,12 +75,14 @@ All responses follow:
 - `POST /api/account/delete`
 
 ### Analysis / Generation
+
 - `POST /api/analyze` (NDJSON stream)
 - `POST /api/generate` (text stream)
 - `POST /api/analogy`
 - `POST /api/transfer`
 
 ### Profiles / Comparisons
+
 - `GET /api/profiles`
 - `POST /api/profiles`
 - `GET /api/profiles/{profile_id}`
@@ -85,92 +91,48 @@ All responses follow:
 - `GET /api/comparisons`
 
 ### Health
+
 - `GET /api/health`
 
 ## Frontend Notes
 
-### Primary app (`app/`)
-
 `app/` is plain JavaScript and is served directly by FastAPI. It does not require a frontend build step.
 
-### Recent UI updates (`app/`)
-
-- Generate and Transfer page now uses an open layout (no outer form card), aligned with Analyze page content width.
-- Generate page form structure is standardized:
-  - Top two-row, two-column layout:
-    - `Style Profile | Content Type`
-    - `Desired Tone | Word Count`
-  - `Topic / Subject`, `Additional Context`, `Generate Content`, and `Generated Output` remain full width.
-- Generate page inputs/textareas now use consistent, more visible outlines in light mode; dark mode styling remains unchanged.
-- Generate textareas (`Topic / Subject`, `Additional Context`) are fixed-height and non-resizable.
-- Analyze and Compare pages had background panel/card wrappers removed behind primary form sections for a cleaner open layout.
-- Compare page refinements:
-  - Larger radio controls for mode selection visibility.
-  - Mode label renamed from `New Text Data` to `Text Box`.
-  - Textareas are fixed-height and non-resizable.
-  - Extra spacing added before the empty-state message.
-- Page subtitles/descriptions were removed from:
-  - Analyze
-  - Generate
-  - Compare
-  - Student Analogy
-  - Profiles
-  - Settings
-- Student Analogy page title updated from `Student Analogy (v2)` to `Student Analogy`.
-- Additional heading-to-form vertical spacing was added for Analyze, Generate, and Compare pages.
-
-### Optional Vite app (`webapp/`)
-
-There is also a separate React + TypeScript + Vite workspace in `webapp/`.
-
-```bash
-cd webapp
-npm install
-npm run dev
-npm run build
-```
-
-This is separate from the FastAPI-served `app/` experience.
-
-## Legacy CLI
-
-Legacy CLI remains available:
-
-```bash
-python scripts/run.py
-```
-
-If installed as a package:
-
-```bash
-style-transfer-ai
-```
+Recent UI updates:
+- Generate and Transfer page now use an open layout aligned with Analyze page content width.
+- Generate, Analyze, and Compare forms have cleaner open sections with fixed-height textareas.
+- Compare mode labels and spacing were refined.
+- Page subtitles were removed from Analyze, Generate, Compare, Student Analogy, Profiles, and Settings.
+- Student Analogy page title is `Student Analogy`.
 
 ## Project Structure
 
 ```text
 style-transfer-ai/
 |- api.py
+|- run.py
 |- app/
+|- data/
+|- deploy/
 |- docs/
+|- install/
+|  |- requirements.txt
 |- scripts/
-|  |- run.py
-|  |- style_analyzer_enhanced.py
+|  |- generate_frontend_config.py
 |- src/
 |  |- analysis/
 |  |- config/
 |  |- database/
 |  |- generation/
 |  |- models/
-|  |- main.py
-|- install/
-|- webapp/
+|  |- utils/
+|- tests/
 |- README.md
 ```
 
 ## Configuration
 
-Supabase is optional but required for authenticated profile/content persistence features.
+Supabase is optional, but required for authenticated profile/content persistence features.
 
 Create `.env` in the project root when using Supabase:
 

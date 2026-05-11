@@ -3,11 +3,10 @@
 ```
 assets/
   images/
-    .gitkeep
-    adhith-np.png
-    alwyn-reji.png
-    farhan-py.png
-    yedu-dev.jpg
+    adhith-np.jpg
+    allwyn-reji.jpg
+    farhan-py.jpg
+    yedu-dev.jpeg
 css/
   style.css
 js/

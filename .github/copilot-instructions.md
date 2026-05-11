@@ -2,22 +2,20 @@
 
 ## Architecture Overview
 
-Current primary surface is a FastAPI backend plus a static vanilla JS app.
+Current product surface is a FastAPI backend plus a static vanilla JS app.
 
 - Core library: `src/`
 - API server: `api.py`
 - Browser app (sidebar UI): `app/`
 - Public marketing/docs: `docs/`
 
-Legacy CLI/GUI code still exists, but active product flow is API + `app/`.
-
 ## Active Entry Points
 
 - API + app runtime:
   - `python -m uvicorn api:app --host 127.0.0.1 --port 8000`
+  - or `python run.py`
   - App URL: `/app`
   - Docs URL: `/docs/index.html`
-- CLI (legacy): `python scripts/run.py`
 
 ## Current Web App Structure
 

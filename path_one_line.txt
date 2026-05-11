@@ -1,4 +1,0 @@
-# One-line PATH setup (run after pip install style-transfer-ai)
-# Copy and paste this line into PowerShell:
-
-$p="$env:APPDATA\Python\Python313\Scripts";$c=[Environment]::GetEnvironmentVariable("PATH","User");if($c -notlike "*$p*"){[Environment]::SetEnvironmentVariable("PATH","$c;$p","User");Write-Host "✅ PATH configured! Restart terminal."}else{Write-Host "✅ Already configured!"}

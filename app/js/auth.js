@@ -6,12 +6,26 @@ let supabaseClient = null;
 
 function consumeOAuthHashSession() {
   const rawHash = window.location.hash || "";
-  if (!rawHash.includes("access_token=")) return;
-
-  const params = new URLSearchParams(rawHash.replace(/^#/, ""));
+  const rawSearch = window.location.search || "";
+  const source = rawHash.includes("access_token=")
+    ? rawHash.replace(/^#/, "")
+    : rawSearch.replace(/^\?/, "");
+  if (!source.includes("access_token=")) return;
+  try {
+    console.debug("OAuth redirect detected", { rawHash, rawSearch, source });
+  } catch (e) {
+    // ignore logging errors
+  }
+  const params = new URLSearchParams(source);
   const accessToken = params.get("access_token") || "";
   if (!accessToken) return;
-
+  try {
+    console.debug("OAuth tokens parsed", {
+      access_token: accessToken ? "[REDACTED]" : "",
+      expires_in: params.get("expires_in"),
+      provider_token: params.get("provider_token") || null,
+    });
+  } catch (e) {}
   const refreshToken = params.get("refresh_token") || "";
   const expiresIn = Number(params.get("expires_in") || 0);
   const now = Math.floor(Date.now() / 1000);
@@ -22,8 +36,8 @@ function consumeOAuthHashSession() {
     expires_at: expiresIn ? now + expiresIn : undefined,
   });
 
-  // Clear OAuth fragment and restore app routing hash.
-  window.location.hash = "#/analyze";
+  const route = rawHash.includes("access_token=") && rawHash.startsWith("#/") ? rawHash : "#/analyze";
+  window.history.replaceState({}, "", `${window.location.pathname}${route}`);
 }
 
 function emitAuthChange() {
@@ -199,7 +213,7 @@ function renderAuthModal(mode = "signin") {
     feedback.textContent = "";
 
     try {
-      const redirectTo = `${window.location.origin}/app/`;
+      const redirectTo = `${window.location.origin}${window.location.pathname}`;
       const response = await fetch("/api/auth/google/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -529,11 +529,7 @@ def _call_model_for_json(
             api_client = os.environ.get("OPENAI_API_KEY", "")
 
     try:
-        if model_name == "remote-ollama":
-            from ..models.remote_ollama_client import analyze_with_remote_ollama
-            raw = analyze_with_remote_ollama(prompt, processing_mode=processing_mode)
-
-        elif api_type == "gemini" or model_name in _GEMINI_NAMES:
+        if api_type == "gemini" or model_name in _GEMINI_NAMES:
             # ── Gemini cloud API ───────────────────────────────────────────
             from ..models.gemini_client import analyze_with_gemini
             from ..config.settings import PROCESSING_MODES

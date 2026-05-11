@@ -400,11 +400,7 @@ Transform the content now:
         """Execute the style transfer using the specified AI model."""
         
         try:
-            if model_name == "remote-ollama":
-                from ..models.remote_ollama_client import analyze_with_remote_ollama
-                result = analyze_with_remote_ollama(prompt, processing_mode="fast")
-                return result
-            elif api_type == "gemini":
+            if api_type == "gemini":
                 from ..models.gemini_client import generate_gemini_response
                 result = generate_gemini_response(
                     prompt=prompt,

@@ -1,1 +1,0 @@
-"""Interactive menu system and navigation logic."""

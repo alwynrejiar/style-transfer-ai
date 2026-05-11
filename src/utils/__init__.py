@@ -1,1 +1,1 @@
-"""Utility functions for text processing, file operations, and formatting."""
+"""Utility functions for text processing and file helpers."""

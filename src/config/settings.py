@@ -14,9 +14,8 @@ AUTHOR = "Style Transfer AI Team"
 
 # API Configuration
 OLLAMA_BASE_URL = "http://localhost:11434"
-REMOTE_OLLAMA_DEFAULT_URL = os.environ.get("REMOTE_OLLAMA_DEFAULT_URL", "")
 
-OPENAI_API_KEY = ""  # Unused – API keys are provided per-request from the client
+OPENAI_API_KEY = ""  # Unused; API keys are provided per-request from the client
 
 # Available AI Models
 AVAILABLE_MODELS = {
@@ -57,21 +56,12 @@ PROCESSING_MODES = {
 }
 
 # File Processing
-DEFAULT_FILE_PATHS = [
-    "data/samples/about_my_pet.txt",
-    "data/samples/about_my_pet_1.txt",
-    "data/samples/about_my_pet_2.txt"
-]
 SUPPORTED_ENCODINGS = ["utf-8", "latin-1"]
 MAX_FILENAME_LENGTH = 30
 
 # Output Configuration
-DEFAULT_OUTPUT_BASE = "user_style_profile_enhanced"
 TIMESTAMP_FORMAT = "%Y%m%d_%H%M%S"
 
-# Menu Configuration
-MAIN_MENU_WIDTH = 60
-SUB_MENU_WIDTH = 40
 
 # ---------------------------------------------------------------------------
 # Analogy Engine / Cognitive Bridging Configuration
@@ -80,7 +70,7 @@ SUB_MENU_WIDTH = 40
 # Toggle analogy augmentation globally (can be overridden at request level)
 ANALOGY_AUGMENTATION_ENABLED = False
 
-# Supported analogy domains ΓÇö each maps to a display label and a short
+# Supported analogy domains; each maps to a display label and a short
 # description used inside LLM prompts so the model picks relevant metaphors.
 ANALOGY_DOMAINS = {
     "sports": {
@@ -115,7 +105,7 @@ ANALOGY_DOMAINS = {
 
 DEFAULT_ANALOGY_DOMAIN = "general_simplification"
 
-# Conceptual density threshold ΓÇö sentences scoring above this trigger analogies.
+# Conceptual density threshold; sentences scoring above this trigger analogies.
 # Range 0.0-1.0.  Higher = only the densest sentences get analogies.
 # Most academic/technical sentences score 0.45-0.70; casual text scores 0.25-0.40.
 CONCEPTUAL_DENSITY_THRESHOLD = 0.45
@@ -126,6 +116,5 @@ CONCEPTUAL_DENSITY_THRESHOLD = 0.45
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
 
-# Set to True to enable cloud storage via Supabase (for website/API use).
-# When False, the CLI/GUI/Streamlit continue using local file storage only.
+# Set to True to enable cloud storage via Supabase for the API/app runtime.
 USE_CLOUD_STORAGE = bool(SUPABASE_URL and SUPABASE_ANON_KEY)
