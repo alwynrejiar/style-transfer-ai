@@ -66,10 +66,8 @@ Current product surface is a FastAPI backend plus a static vanilla JS app.
 | `analysis/analogy_engine.py` | cognitive bridging support | `detect_conceptual_density`, `AnalogyInjector` |
 | `generation/content_generator.py` | style-conditioned generation | `ContentGenerator.generate_content` |
 | `generation/style_transfer.py` | rewriting/transfer | `StyleTransfer.transfer_style` |
-| `database/auth.py` | Supabase auth wrappers | `sign_in`, `sign_up`, `sign_out`, `get_current_user` |
-| `database/db_analyses.py` | saved style profile CRUD | `save_analysis`, `list_analyses`, `get_analysis`, `delete_analysis` |
-| `database/db_comparisons.py` | saved comparison CRUD | `save_comparison`, `list_comparisons` |
-| `database/db_content.py` | generated content persistence | `save_generated_content` |
+| `database/auth.py` | Supabase auth wrappers only | `sign_in`, `sign_up`, `sign_out`, `get_current_user` |
+| `local_store.py` | local file-backed app persistence | `save_analysis`, `list_analyses`, `save_generated_content`, `save_comparison` |
 | `config/settings.py` | model/mode constants | `AVAILABLE_MODELS`, `PROCESSING_MODES`, URLs |
 
 ## Conventions and Rules
@@ -77,6 +75,7 @@ Current product surface is a FastAPI backend plus a static vanilla JS app.
 - Import constants from `src/config/settings.py`; do not hardcode model/mode constants.
 - Keep API response shape consistent: `{ "success": bool, "data": ..., "error": ... }`.
 - Preserve auth flow using bearer token from `/api/auth/signin`.
+- Keep Supabase usage limited to authentication; user-owned app data should go through `src/local_store.py`.
 - `app/` is plain JS (no build tooling). Keep dependencies browser-native.
 - Sidebar navigation is the primary feature launcher; new features should be routed via `router.js` and linked in `navbar.js`.
 - Keep docs changes minimal; `docs/` is mostly read-only except explicit user requests.

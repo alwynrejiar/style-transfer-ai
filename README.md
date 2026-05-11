@@ -13,6 +13,7 @@ Current primary runtime:
 - Core Python package: `src/`
 - Browser app: `app/`
 - Docs/marketing static site: `docs/`
+- Local persistence: `local_data/` (ignored by Git)
 - Deployment helpers: `deploy/`
 - Dependency manifest: `install/requirements.txt`
 
@@ -29,7 +30,6 @@ python -m venv .venv
 
 ```bash
 pip install -r install/requirements.txt
-pip install fastapi uvicorn python-dotenv supabase
 ```
 
 ### 3. Optional local model setup
@@ -126,19 +126,21 @@ style-transfer-ai/
 |  |- generation/
 |  |- models/
 |  |- utils/
+|  |- local_store.py
 |- tests/
 |- README.md
 ```
 
 ## Configuration
 
-Supabase is optional, but required for authenticated profile/content persistence features.
+Supabase is used only for authentication. Saved profiles, generated content, comparisons, and uploaded avatar files are stored locally under `local_data/` by default.
 
-Create `.env` in the project root when using Supabase:
+Create `.env` in the project root for authentication and optional local storage location:
 
 ```env
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
+LOCAL_DATA_DIR=local_data
 ```
 
 ## Development Notes

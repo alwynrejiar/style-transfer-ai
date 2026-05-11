@@ -64,6 +64,7 @@ temp/
 tmp/
 
 # User-generated Content
+local_data/
 user_style_profiles/
 analysis_results/
 custom_samples/

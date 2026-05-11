@@ -110,11 +110,10 @@ DEFAULT_ANALOGY_DOMAIN = "general_simplification"
 # Most academic/technical sentences score 0.45-0.70; casual text scores 0.25-0.40.
 CONCEPTUAL_DENSITY_THRESHOLD = 0.45
 # ---------------------------------------------------------------------------
-# Supabase / Cloud Database Configuration
+# Supabase Auth Configuration
 # ---------------------------------------------------------------------------
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
 
-# Set to True to enable cloud storage via Supabase for the API/app runtime.
-USE_CLOUD_STORAGE = bool(SUPABASE_URL and SUPABASE_ANON_KEY)
+SUPABASE_AUTH_CONFIGURED = bool(SUPABASE_URL and SUPABASE_ANON_KEY)

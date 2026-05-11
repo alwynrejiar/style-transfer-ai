@@ -32,6 +32,12 @@ python -m spacy download en_core_web_sm
 echo "[stylomex] Generating frontend config"
 python scripts/generate_frontend_config.py
 
+echo "[stylomex] Preparing local data directory"
+mkdir -p "${LOCAL_DATA_DIR:-local_data}"
+if command -v sudo >/dev/null 2>&1; then
+  sudo chown -R www-data:www-data "${LOCAL_DATA_DIR:-local_data}" || true
+fi
+
 echo "[stylomex] Restarting services"
 sudo systemctl restart stylomex
 sudo systemctl reload nginx

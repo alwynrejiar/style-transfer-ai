@@ -11,7 +11,6 @@ import os
 import re
 from typing import Any, AsyncGenerator, Dict, Optional, Union
 
-import requests
 from fastapi import Depends, FastAPI, Header
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,11 +30,20 @@ from src.database.auth import (
     sign_up,
     update_password,
 )
-from src.database.db_analyses import delete_analysis, get_analysis, list_analyses, save_analysis
-from src.database.db_comparisons import list_comparisons, save_comparison
-from src.database.db_content import save_generated_content
-from src.database.db_user_profiles import get_user_overview_profile, update_user_overview_profile
 from src.database.supabase_client import get_supabase_client
+from src.local_store import (
+    LOCAL_FILES_DIR,
+    delete_analysis,
+    get_analysis,
+    get_user_overview_profile,
+    list_analyses,
+    list_comparisons,
+    save_analysis,
+    save_avatar,
+    save_comparison,
+    save_generated_content,
+    update_user_overview_profile,
+)
 from src.generation import ContentGenerator, StyleTransfer
 from src.analysis.analogy_engine import AnalogyInjector, ANALOGY_DOMAINS
 from src.models.ollama_client import is_ollama_installed, list_ollama_models
@@ -44,6 +52,7 @@ app = FastAPI(title="Stylomex API", version="1.0.0")
 
 app.mount("/app", StaticFiles(directory="app", html=True), name="app-static")
 app.mount("/docs", StaticFiles(directory="docs", html=True), name="docs-static")
+app.mount("/local-files", StaticFiles(directory=str(LOCAL_FILES_DIR)), name="local-files")
 
 app.add_middleware(
     CORSMiddleware,
@@ -478,41 +487,22 @@ async def api_upload_user_avatar(body: UploadAvatarRequest, auth: AuthContext = 
         return failure("Decoded image is empty.")
 
     ext = mime_to_ext[inferred_content_type]
-    object_name = f"{auth.user_id}/avatar.{ext}"
+    avatar_result = await run_in_threadpool(save_avatar, auth.user_id, image_bytes, ext)
+    if not avatar_result.get("success"):
+        return failure(avatar_result.get("error") or "Avatar save failed.", status_code=500)
 
-    supabase_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
-    anon_key = os.environ.get("SUPABASE_ANON_KEY", "")
-    if not supabase_url or not anon_key:
-        return failure("Supabase is not configured on the server.", status_code=500)
-
-    upload_url = f"{supabase_url}/storage/v1/object/profile-images/{object_name}"
-    headers = {
-        "Authorization": f"Bearer {auth.access_token}",
-        "apikey": anon_key,
-        "Content-Type": inferred_content_type,
-        "x-upsert": "true",
-    }
-
-    try:
-        upload_response = requests.post(upload_url, headers=headers, data=image_bytes, timeout=60)
-    except Exception as exc:
-        return failure(f"Avatar upload failed: {exc}", status_code=502)
-
-    if upload_response.status_code >= 400:
-        err = upload_response.text or f"Storage upload failed ({upload_response.status_code})."
-        return failure(err, status_code=upload_response.status_code)
-
-    public_url = f"{supabase_url}/storage/v1/object/public/profile-images/{object_name}"
+    avatar_data = avatar_result.get("data") or {}
+    avatar_url = avatar_data.get("avatar_url", "")
     update_result = await run_in_threadpool(
         update_user_overview_profile,
         auth.access_token,
         auth.user_id,
-        {"avatar_url": public_url},
+        {"avatar_url": avatar_url},
     )
     if not update_result.get("success"):
-        return failure(update_result.get("error") or "Avatar uploaded, but profile update failed.", status_code=500)
+        return failure(update_result.get("error") or "Avatar saved, but profile update failed.", status_code=500)
 
-    return success({"avatar_url": public_url, "path": object_name})
+    return success({"avatar_url": avatar_url, "path": avatar_data.get("path")})
 
 
 @app.post("/api/analyze")
@@ -946,16 +936,17 @@ async def api_health():
         model_result = await run_in_threadpool(list_ollama_models)
         models = model_result[0] if isinstance(model_result, tuple) else []
 
-    supabase_ok = True
+    supabase_auth_ok = True
     try:
         await run_in_threadpool(get_supabase_client)
     except Exception:
-        supabase_ok = False
+        supabase_auth_ok = False
 
     return success({
         "ollama": bool(ollama_ok),
         "models": models,
-        "supabase": supabase_ok,
+        "supabase_auth": supabase_auth_ok,
+        "local_storage": True,
         "backend_build": "20260511-gemini-rest-v2",
         "gemini_transport": "rest",
     })

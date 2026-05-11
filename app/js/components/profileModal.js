@@ -1,5 +1,5 @@
 import { getSession } from "../auth.js?v=20260504-logo-v2";
-import { apiGet } from "../api.js?v=20260324-google-auth-v14";
+import { apiGet, apiPatch, apiPost } from "../api.js?v=20260324-google-auth-v14";
 
 function getAvatarUrl(email) {
   return localStorage.getItem(`stylomex.avatar.${email}`);
@@ -172,18 +172,30 @@ export function showProfileModal() {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         const base64Data = event.target.result;
-        localStorage.setItem(`stylomex.avatar.${email}`, base64Data);
+        let avatarSrc = base64Data;
+        try {
+          const saved = await apiPost("/api/user-profile/avatar", {
+            image_base64: base64Data,
+            filename: file.name,
+            content_type: file.type,
+          });
+          avatarSrc = saved?.avatar_url || base64Data;
+        } catch {
+          // Keep the UI responsive even if the server-side local save fails.
+        }
+
+        localStorage.setItem(`stylomex.avatar.${email}`, avatarSrc);
         
         // Update local modal view
         const avatarDiv = modal.querySelector(".profile-modal-avatar");
         if (avatarDiv.tagName === "IMG") {
-          avatarDiv.src = base64Data;
+          avatarDiv.src = avatarSrc;
         } else {
           const img = document.createElement("img");
           img.className = "profile-modal-avatar";
-          img.src = base64Data;
+          img.src = avatarSrc;
           img.alt = "Avatar";
           avatarDiv.replaceWith(img);
         }
@@ -203,18 +215,60 @@ export function showProfileModal() {
   const roleValue = modal.querySelector("#profile-modal-role");
   const toneValue = modal.querySelector("#profile-modal-tone");
 
+  apiGet("/api/user-profile")
+    .then((profile) => {
+      if (profile?.role) {
+        role = profile.role;
+        if (roleValue) roleValue.textContent = role;
+        if (roleSelect) roleSelect.value = role;
+        if (roleKey) localStorage.setItem(roleKey, role);
+      }
+      if (profile?.dominant_tone) {
+        dominantTone = profile.dominant_tone;
+        if (toneValue) toneValue.textContent = dominantTone;
+        if (toneSelect) toneSelect.value = dominantTone;
+        if (toneKey) localStorage.setItem(toneKey, dominantTone);
+      }
+      if (profile?.avatar_url) {
+        localStorage.setItem(`stylomex.avatar.${email}`, profile.avatar_url);
+        const avatarDiv = modal.querySelector(".profile-modal-avatar");
+        if (avatarDiv?.tagName === "IMG") {
+          avatarDiv.src = profile.avatar_url;
+        } else if (avatarDiv) {
+          const img = document.createElement("img");
+          img.className = "profile-modal-avatar";
+          img.src = profile.avatar_url;
+          img.alt = "Avatar";
+          avatarDiv.replaceWith(img);
+        }
+      }
+    })
+    .catch(() => {});
+
   editBtn?.addEventListener("click", () => {
     editFields?.classList.remove("hidden");
     saveBtn?.classList.remove("hidden");
     editBtn.classList.add("hidden");
   });
 
-  saveBtn?.addEventListener("click", () => {
+  saveBtn?.addEventListener("click", async () => {
     role = roleSelect?.value || role;
     dominantTone = toneSelect?.value || dominantTone;
 
     if (roleKey) localStorage.setItem(roleKey, role);
     if (toneKey) localStorage.setItem(toneKey, dominantTone);
+
+    try {
+      await apiPatch("/api/user-profile", {
+        username,
+        role,
+        dominant_tone: dominantTone,
+        writing_fingerprint_score: fingerprintScore,
+        number_of_saved_profiles: savedProfilesCount,
+      });
+    } catch {
+      // Browser localStorage still mirrors these preferences for the current session.
+    }
 
     if (roleValue) roleValue.textContent = role;
     if (toneValue) toneValue.textContent = dominantTone;
@@ -224,8 +278,6 @@ export function showProfileModal() {
     editBtn?.classList.remove("hidden");
   });
 }
-
-
 
 
 

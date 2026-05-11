@@ -28,6 +28,8 @@ Fill `.env` with real values for:
 - `SUPABASE_ANON_KEY`
 - `GEMINI_API_KEY`
 
+Supabase is used only for authentication. App data is stored locally under `LOCAL_DATA_DIR` (default: `local_data`).
+
 ## 3) Install systemd units
 
 ```bash

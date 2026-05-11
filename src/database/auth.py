@@ -4,13 +4,15 @@ Wraps Supabase Auth for signup, login, logout, and password reset.
 All functions return a consistent dict: {success, data, error}.
 """
 
-from .supabase_client import get_authenticated_client, get_supabase_admin_client, get_supabase_client
+from src.local_store import delete_user_local_data
+
+from .supabase_client import get_supabase_admin_client, get_supabase_client
 
 
 def sign_up(email, password, user_name=""):
     """
     Create a new user account.
-    A profiles row is auto-created by the database trigger.
+    Application data is stored locally; Supabase is used only for auth.
 
     Args:
         email (str): User's email address.
@@ -212,42 +214,26 @@ def update_password(access_token, new_password, refresh_token=""):
         return {"success": False, "data": None, "error": str(e)}
 
 
-def delete_user_content(access_token, user_id):
-    """Delete user-owned content rows before account removal."""
-    try:
-        client = get_authenticated_client(access_token)
-        tables = [
-            "style_comparisons",
-            "generated_content",
-            "style_transfers",
-            "style_analyses",
-            "profiles",
-        ]
-
-        for table_name in tables:
-            client.table(table_name).delete().eq("user_id" if table_name != "profiles" else "id", user_id).execute()
-
-        return {"success": True, "data": None, "error": None}
-    except Exception as e:
-        return {"success": False, "data": None, "error": str(e)}
+def delete_user_content(_access_token, user_id):
+    """Delete locally stored user-owned app data before auth account removal."""
+    return delete_user_local_data(user_id)
 
 
 def delete_account(access_token, user_id):
-    """Delete all user data and the auth account when admin key is available."""
-    wipe = delete_user_content(access_token, user_id)
-    if not wipe.get("success"):
-        return wipe
-
+    """Delete local app data and the Supabase auth account when admin key is available."""
     admin_client = get_supabase_admin_client()
     if admin_client is None:
         return {
             "success": False,
             "data": None,
-            "error": "Account data deleted, but auth user deletion requires SUPABASE_SERVICE_ROLE_KEY.",
+            "error": "Auth user deletion requires SUPABASE_SERVICE_ROLE_KEY.",
         }
 
     try:
         admin_client.auth.admin.delete_user(user_id)
+        wipe = delete_user_content(access_token, user_id)
+        if not wipe.get("success"):
+            return wipe
         return {"success": True, "data": {"deleted": True}, "error": None}
     except Exception as e:
         return {"success": False, "data": None, "error": str(e)}

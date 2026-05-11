@@ -1,7 +1,7 @@
 """Generate browser-safe runtime config for the static app shell.
 
 This script reads .env values and writes app/js/config.js so the frontend can
-access Supabase public settings without hardcoding them in index.html.
+access Supabase auth public settings without hardcoding them in index.html.
 """
 
 from __future__ import annotations
