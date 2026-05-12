@@ -56,6 +56,16 @@ Open:
 - Docs page: http://127.0.0.1:8000/docs/index.html
 - OpenAPI Swagger: http://127.0.0.1:8000/docs
 
+## Achievements
+
+### InApp - IEEE CS Student Project Awards 2026
+
+![InApp IEEE CS Student Project Awards 2026 Elevator Pitch Round](docs/assets/images/achievements/ieee-cs-student-project-awards-2026.png)
+
+### OpenAI Academy x NxtWave Buildathon
+
+![OpenAI Academy x NxtWave Buildathon State-Level Qualification](docs/assets/images/achievements/openai-academy-nxtwave-state-level-buildathon.png)
+
 ## API Surface
 
 All standard JSON responses follow:
