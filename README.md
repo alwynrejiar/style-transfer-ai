@@ -1,4 +1,4 @@
-# Stylomex / Style Transfer AI
+<img width="1600" height="1111" alt="image" src="https://github.com/user-attachments/assets/9bc30601-f86a-4e01-a753-c198b4415838" /># Stylomex / Style Transfer AI
 
 Style Transfer AI is a stylometry and style-transfer project with a FastAPI backend and a static browser app.
 
@@ -60,11 +60,12 @@ Open:
 
 ### InApp - IEEE CS Student Project Awards 2026
 
-![InApp IEEE CS Student Project Awards 2026 Elevator Pitch Round](docs/assets/images/achievements/ieee-cs-student-project-awards-2026.png)
+<img width="1032" height="378" alt="image" src="https://github.com/user-attachments/assets/2fe65836-6182-47e0-9f67-8a35eaacf12b" />
+
 
 ### OpenAI Academy x NxtWave Buildathon
 
-![OpenAI Academy x NxtWave Buildathon State-Level Qualification](docs/assets/images/achievements/openai-academy-nxtwave-state-level-buildathon.png)
+<img width="1600" height="1111" alt="image" src="https://github.com/user-attachments/assets/69e333c7-6cf4-44fe-8410-88fbdba8702f" />
 
 ## API Surface
 
